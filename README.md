@@ -1,9 +1,26 @@
 # EmmaClientWeb — versione Blazor del client Avalonia
 
 Porting web di `EMMA-CLIENT/EmmaClientAv` (Avalonia 12 / .NET 10) su **Blazor Server**.
-Riusa senza modifiche i progetti esistenti `Emma.Services` e `EmmaServer.Entities`.
+Riusa senza modifiche i progetti `Emma.Services` e `EmmaServer.Entities`, che vivono
+nel repository separato [EMMA-SERVER](https://github.com/maltomare70/EMMA-SERVER).
 
-## Avvio
+> Questa cartella (`EMMA-WEB`) è pensata come **radice del proprio repository Git**,
+> distinto da EMMA-SERVER e da EMMA-CLIENT (il client desktop Avalonia).
+
+## Sviluppo locale
+
+Lo sviluppo locale richiede Emma.Services ed EmmaServer.Entities come cartelle
+sibling di questo repo (li referenzia con `..\..\`), es.:
+
+```
+qualche-cartella/
+├── EMMA-WEB/                 ← questo repo
+│   └── EmmaClientWeb/
+├── Emma.Services/             ← da EMMA-SERVER
+└── EmmaServer.Entities/       ← da EMMA-SERVER
+```
+
+Clona anche EMMA-SERVER accanto a questo repo, poi:
 
 ```bash
 cd EMMA-WEB/EmmaClientWeb
@@ -67,10 +84,69 @@ Il prerender è disattivato (`InteractiveServerRenderMode(prerender: false)`) pe
 `UserSession` vive nel circuito: un refresh del browser richiede quindi un nuovo login,
 esattamente come riavviare l'applicazione desktop.
 
+## Deploy su Render (Docker)
+
+`EMMA-WEB` è un repository a sé: `Emma.Services` ed `EmmaServer.Entities` **non**
+sono nel suo contesto di build, vivono in
+[EMMA-SERVER](https://github.com/maltomare70/EMMA-SERVER) (repo pubblico).
+Il `Dockerfile` (nella radice di questo repo) risolve la dipendenza clonando
+EMMA-SERVER in uno stage dedicato durante la build, poi costruisce il client web
+come se quei due progetti fossero cartelle sibling — esattamente come in locale.
+
+Impostazioni del servizio Render:
+
+| Campo | Valore |
+|---|---|
+| Language / Runtime | Docker |
+| Repo | questo repo (`EMMA-WEB`) |
+| Dockerfile Path | `./Dockerfile` |
+| Docker Build Context Directory | `.` (radice di questo repo) |
+
+Build args del Dockerfile (opzionali, hanno un default sensato):
+
+| Build arg | Default | Effetto |
+|---|---|---|
+| `EMMA_SERVER_REPO` | `https://github.com/maltomare70/EMMA-SERVER.git` | URL del repo da clonare |
+| `EMMA_SERVER_REF` | `main` | Branch/tag/commit da clonare |
+
+Se Render espone "Build Args" nel piano in uso puoi impostarli lì; altrimenti
+modifica i default nel Dockerfile e fai commit.
+
+Variabili d'ambiente a runtime:
+
+| Variabile | Effetto |
+|---|---|
+| `Emma__ServerUrl` | Sovrascrive `Emma:ServerUrl` di `appsettings.json` (URL dell'API Emma) |
+| `ASPNETCORE_ENVIRONMENT` | Lasciare non impostata o `Production`; con `Development` si userebbe `http://localhost:9111` |
+
+Note sul comportamento in container:
+
+- `ASPNETCORE_HTTP_PORTS=8080` allinea la porta di ascolto alla `EXPOSE 8080`.
+- `UseForwardedHeaders()` legge `X-Forwarded-Proto` così l'app sa di essere dietro TLS terminato dal proxy.
+- Il redirect HTTPS applicativo è attivo solo in Development: in container lo gestisce Render.
+- Blazor Server richiede i **WebSocket** per il circuito SignalR; Render li supporta di default.
+  Con più istanze serve sticky session, quindi tenere il servizio a **una sola istanza**
+  (oppure abilitare l'affinità di sessione).
+- **Cache del clone**: lo stage `deps` clona `EMMA_SERVER_REF` (default `main`, un branch,
+  non un commit fisso). Se il layer Docker viene riusato tra una build e l'altra, un
+  aggiornamento di EMMA-SERVER potrebbe non essere preso finché non si fa
+  `docker build --no-cache` (in locale) o non si fissa `EMMA_SERVER_REF` a un tag/commit
+  preciso e lo si aggiorna a ogni release del server.
+
+Build e prova in locale:
+
+```bash
+cd EMMA-WEB
+docker build -t emma-client-web .
+docker run --rm -p 8080:8080 -e Emma__ServerUrl=https://emma-server-uda8.onrender.com emma-client-web
+```
+
 ## Struttura
 
 ```
-EMMA-WEB/
+EMMA-WEB/                         ← radice di questo repo Git
+├── Dockerfile                    → clona EMMA-SERVER in build, poi compila il client web
+├── .dockerignore
 ├── EmmaClientWeb.sln
 └── EmmaClientWeb/
     ├── EmmaClientWeb.csproj        → ProjectReference a Emma.Services e EmmaServer.Entities
