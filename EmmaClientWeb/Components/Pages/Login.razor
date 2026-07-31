@@ -1,0 +1,141 @@
+@page "/"
+@page "/login"
+@layout MainLayout
+@inject UserSession Session
+@inject EmmaServiceFactory Factory
+@inject NavigationManager Nav
+
+@* Replica di Forms/Login/Login.axaml - Window 350x250 centrata sullo schermo *@
+
+<div class="login-backdrop @(_busy ? "busy" : "")">
+    <div class="login-window">
+        <div class="win-title">Login</div>
+        <div class="login-body">
+            <h2>Accedi</h2>
+
+            <div class="group">
+                <label for="txtUser">Utente:</label>
+                <input id="txtUser" class="emma-input" type="text" placeholder="Inserisci l'utente"
+                       @bind="_user" @bind:event="oninput" @onkeydown="OnKeyDown" disabled="@_busy" />
+            </div>
+
+            <div class="group">
+                <label for="txtPassword">Password:</label>
+                <input id="txtPassword" class="emma-input" type="password" placeholder="Inserisci la password"
+                       @bind="_password" @bind:event="oninput" @onkeydown="OnKeyDown" disabled="@_busy" />
+            </div>
+
+            <div class="login-actions">
+                <button class="btn btn-dodger" @onclick="BtnOk_Click" disabled="@_busy">
+                    @if (_busy)
+                    {
+                        <span class="emma-spinner"></span>
+                    }
+                    else
+                    {
+                        <span>OK</span>
+                    }
+                </button>
+                <button class="btn btn-red" @onclick="BtnCancel_Click" disabled="@_busy">Annulla</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    private string _user = string.Empty;
+    private string _password = string.Empty;
+    private bool _busy;
+    private EmmaDialogs _dialogs = default!;
+
+    protected override void OnInitialized()
+    {
+        // Session già attiva: salta il login
+        if (Session.IsAuthenticated)
+        {
+            Nav.NavigateTo("/dashboard");
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await BtnOk_Click();
+    }
+
+    /// <summary>Replica di Login.IfLoginSucceded()</summary>
+    private async Task<bool> IfLoginSucceded(string user, string password)
+    {
+        var loginService = Factory.Login(user, password);
+        var loginResponse = await loginService.LoginAsync();
+
+        if (loginResponse is null) return false;
+
+        if (!string.IsNullOrWhiteSpace(loginResponse.url))
+        {
+            // Nel desktop veniva salvato su config.json; qui resta nella sessione utente
+            Session.ServerUrlOverride = loginResponse.url;
+        }
+
+        return loginResponse.esito;
+    }
+
+    private async Task BtnOk_Click()
+    {
+        if (string.IsNullOrWhiteSpace(_user))
+        {
+            await _dialogs.ErroreAsync("Inserire Utente!");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_password))
+        {
+            await _dialogs.ErroreAsync("Inserire Password!");
+            return;
+        }
+
+        try
+        {
+            _busy = true;
+            StateHasChanged();
+
+            if (await IfLoginSucceded(_user, _password))
+            {
+                Session.SignIn(_user, _password);
+
+                // Ping opzionale per "svegliare" il server free tier
+                try
+                {
+                    await Factory.Docs().PingAsync();
+                }
+                catch
+                {
+                    // ignorato come nell'originale
+                }
+
+                Nav.NavigateTo("/dashboard");
+            }
+            else
+            {
+                await _dialogs.ErroreAsync("Credenziali errate !");
+                _password = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private void BtnCancel_Click()
+    {
+        _user = string.Empty;
+        _password = string.Empty;
+    }
+}

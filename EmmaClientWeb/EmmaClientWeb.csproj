@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <RootNamespace>EmmaClientWeb</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\EMMA-SERVER\Emma.Services\Emma.Services.csproj" />
+      <ProjectReference Include="..\..\EMMA-SERVER\EmmaServer.Entities\EmmaServer.Entities.csproj" />
+    </ItemGroup>
+
+</Project>

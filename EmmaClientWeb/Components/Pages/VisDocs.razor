@@ -1,0 +1,588 @@
+@page "/documenti"
+@layout MainLayout
+@using System.Text
+@using System.Globalization
+@using System.Collections.ObjectModel
+@inject UserSession Session
+@inject EmmaServiceFactory Factory
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@* Replica di Forms/VisDocs/VisDocForms.axaml *@
+
+<div class="emma-page @(_busy ? "busy" : "")">
+
+    <!-- Border toolbar filtri -->
+    <div class="emma-toolbar">
+        <div class="emma-toolbar-left">
+
+            <div class="emma-field">
+                <label>Tipo Documento:</label>
+                <select class="emma-select" style="width:200px" @bind="_tipoDocIndex" disabled="@_busy">
+                    @for (int i = 0; i < TipiDocumento.Length; i++)
+                    {
+                        var idx = i;
+                        <option value="@idx">@TipiDocumento[idx]</option>
+                    }
+                </select>
+            </div>
+
+            <div class="emma-separator"></div>
+
+            <div class="emma-field">
+                <label>Fornitore:</label>
+                <select class="emma-select" style="width:400px" @bind="_fornitoreDescrizione" disabled="@_busy">
+                    <option value="">Seleziona Fornitore...</option>
+                    @foreach (var f in _fornitori)
+                    {
+                        <option value="@f.descrizione">@f.descrizione</option>
+                    }
+                </select>
+            </div>
+
+            <div class="emma-separator"></div>
+
+            <div class="emma-field">
+                <label>Stato Documento:</label>
+                <select class="emma-select" style="width:200px" @bind="_statoDocIndex" disabled="@_busy">
+                    @for (int i = 0; i < StatiDocumento.Length; i++)
+                    {
+                        var idx = i;
+                        <option value="@idx">@StatiDocumento[idx]</option>
+                    }
+                </select>
+            </div>
+
+            <div class="emma-separator"></div>
+
+            <button class="btn btn-blue" @onclick="MostraDocumenti_Click" disabled="@_busy">
+                <span>📁</span><span>Mostra Documenti ...</span>
+            </button>
+
+            <div class="emma-separator"></div>
+
+            <button class="btn btn-blue" @onclick="Export_Click" disabled="@(_busy || !Documenti.Any())">
+                <span>💾</span><span>Esporta su file ...</span>
+            </button>
+
+            <div class="emma-separator"></div>
+
+            <button class="btn btn-grey" @onclick="ChiudiStato_Click" disabled="@(_busy || !Documenti.Any())">
+                <span>❌</span><span>Chiudi Stato</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- DataGrid master con RowDetails -->
+    <div class="emma-grid-wrapper">
+        <table class="emma-grid">
+            <thead>
+                <tr>
+                    <th style="width:34px"></th>
+                    <th>Fornitore</th>
+                    <th style="width:100px">Tipo Doc.</th>
+                    <th style="width:150px">N° Documento</th>
+                    <th style="width:150px">Data Documento</th>
+                    <th class="col-actions"></th>
+                    <th class="col-actions"></th>
+                    <th class="col-actions"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Documenti.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            Imposta i filtri e premi "Mostra Documenti ..." per caricare i documenti.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var master in Documenti)
+                    {
+                        var m = master;
+                        var espanso = ReferenceEquals(_espanso, m);
+                        var chiaveDettagli = "det-" + m.Id;
+
+                        <tr @key="m" class="expandable @(espanso ? "selected" : "")" @onclick="() => ToggleDettagli(m)">
+                            <td class="cell-center">
+                                <button class="expander">@(espanso ? "▼" : "▶")</button>
+                            </td>
+                            <td><strong>@m.Fornitore</strong></td>
+                            <td>@m.TipDocumento</td>
+                            <td>@m.NumeroDocumento</td>
+                            <td>@m.DataDocumento</td>
+                            <td class="col-actions">
+                                <button class="btn btn-blue btn-sm"
+                                        @onclick="() => CambioStato_Click(m)" @onclick:stopPropagation="true"
+                                        disabled="@_busy">
+                                    @m.TestoBottone
+                                </button>
+                            </td>
+                            <td class="col-actions">
+                                <button class="btn btn-red btn-sm"
+                                        @onclick="() => Elimina_Click(m)" @onclick:stopPropagation="true"
+                                        disabled="@_busy">
+                                    Elimina
+                                </button>
+                            </td>
+                            <td class="col-actions">
+                                <button class="btn btn-default btn-sm"
+                                        @onclick="() => Pdf_Click(m)" @onclick:stopPropagation="true"
+                                        disabled="@(_busy || m.Allegato is null || m.Allegato.Length == 0)">
+                                    PDF
+                                </button>
+                            </td>
+                        </tr>
+
+                        @if (espanso)
+                        {
+                            <tr @key="chiaveDettagli">
+                                <td colspan="8" style="padding:0;background:#FFFFFF">
+                                    <div class="row-details">
+                                        <table class="emma-grid">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width:200px">Codice</th>
+                                                    <th>Descrizione</th>
+                                                    <th style="width:100px" class="cell-center">U.M.</th>
+                                                    <th style="width:150px">Q.tà</th>
+                                                    <th style="width:150px">Imponibile</th>
+                                                    <th style="width:100px" class="cell-center">IVA</th>
+                                                    <th style="width:150px">Totale</th>
+                                                    <th style="width:100px"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @if (!m.Dettagli.Any())
+                                                {
+                                                    <tr><td colspan="8" class="empty-state">Nessuna riga di dettaglio.</td></tr>
+                                                }
+                                                else
+                                                {
+                                                    @foreach (var riga in m.Dettagli.ToList())
+                                                    {
+                                                        var r = riga;
+                                                        <tr @key="r">
+                                                            <td><input class="cell-edit" value="@r.CodiceArticolo"
+                                                                       @onchange="e => AggiornaCampo(r, () => r.CodiceArticolo = e.Value?.ToString())" /></td>
+                                                            <td><input class="cell-edit" value="@r.DescrizioneArticolo"
+                                                                       @onchange="e => AggiornaCampo(r, () => r.DescrizioneArticolo = e.Value?.ToString())" /></td>
+                                                            <td><input class="cell-edit cell-center" value="@r.UnitaMisura"
+                                                                       @onchange="e => AggiornaCampo(r, () => r.UnitaMisura = e.Value?.ToString())" /></td>
+                                                            @* input type=number vuole sempre il formato invariante *@
+                                                            <td><input class="cell-edit cell-right" type="number" step="1" value="@Inv(r.Qta)"
+                                                                       @onchange="e => AggiornaCampo(r, () => r.Qta = ToDouble(e.Value))" /></td>
+                                                            <td><input class="cell-edit cell-right" type="number" step="0.01" value="@Inv(r.Imponibile)"
+                                                                       @onchange="e => AggiornaCampo(r, () => r.Imponibile = ToDouble(e.Value))" /></td>
+                                                            <td class="cell-center">@r.IVA</td>
+                                                            <td><input class="cell-edit cell-right" type="number" step="0.01" value="@Inv(r.Totale)"
+                                                                       @onchange="e => AggiornaCampo(r, () => r.Totale = ToDouble(e.Value))" /></td>
+                                                            <td class="cell-center">
+                                                                @* TestoBottone: "Aggiungi" (verde) se IdRiga vuoto, altrimenti "Elimina" (rosso) *@
+                                                                <button class="btn btn-sm @(r.TestoBottone == "Elimina" ? "btn-red" : "btn-green")"
+                                                                        @onclick="() => RigaAzione_Click(m, r)" disabled="@_busy">
+                                                                    @r.TestoBottone
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                }
+                                            </tbody>
+                                        </table>
+
+                                        <button class="btn btn-green add-row" @onclick="() => NuovaRiga_Click(m)" disabled="@_busy">
+                                            + Nuova Riga
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<PdfViewer @ref="_pdfViewer" />
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    private static readonly string[] TipiDocumento = ArticoliServiceManager.GetTipodocs();
+    private static readonly string[] StatiDocumento = ArticoliServiceManager.GetStatodocs();
+
+    private List<MasterDocumento> Documenti { get; set; } = new();
+    private MasterDocumento? _espanso;
+
+    private List<EmmaFornitori> _fornitori = new();
+    private int _tipoDocIndex;
+    private int _statoDocIndex;
+    private string _fornitoreDescrizione = string.Empty;
+
+    private bool _busy;
+    private EmmaDialogs _dialogs = default!;
+    private PdfViewer _pdfViewer = default!;
+
+    private IDocService _docService = default!;
+    private IFornitoriService _fornitoriService = default!;
+    private IArticoliService _articoliService = default!;
+
+    protected override void OnInitialized()
+    {
+        if (!Session.IsAuthenticated) { Nav.NavigateTo("/"); return; }
+
+        _docService = Factory.Docs();
+        _fornitoriService = Factory.Fornitori();
+        _articoliService = Factory.Articoli();
+    }
+
+    // Replica di VisDocForms.Window_OnOpened (dopo il primo render, così i @ref sono pronti)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Session.IsAuthenticated) return;
+
+        try
+        {
+            _busy = true;
+            var fornitori = await _fornitoriService.GetFornitoriAsync();
+            _fornitori = fornitori.OrderBy(x => x.descrizione).ToList();
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private static double ToDouble(object? value)
+        => double.TryParse(value?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var d)
+            ? d
+            : double.TryParse(value?.ToString(), NumberStyles.Any, CultureInfo.CurrentCulture, out var d2) ? d2 : 0;
+
+    /// <summary>Formato invariante richiesto da input type="number".</summary>
+    private static string Inv(double v) => v.ToString(CultureInfo.InvariantCulture);
+
+    private void ToggleDettagli(MasterDocumento m)
+        => _espanso = ReferenceEquals(_espanso, m) ? null : m;
+
+    /// <summary>Replica di CaricaDati() — costruisce EmmaDocFilters dai combo.</summary>
+    private async Task<List<EmmaDoc>?> CaricaDati()
+    {
+        var filtri = new EmmaDocFilters
+        {
+            Stato = _statoDocIndex,
+            TipoDoc = _tipoDocIndex,
+            Fornitore = _fornitoreDescrizione ?? string.Empty
+        };
+
+        return await _docService.GetDocsAsync(filtri);
+    }
+
+    /// <summary>Replica di LoadDataGridData(List&lt;EmmaDoc&gt;)</summary>
+    private void LoadDataGridData(List<EmmaDoc>? docs)
+    {
+        if (docs is null) return;
+
+        var risultato = new List<MasterDocumento>();
+
+        foreach (var emmaDoc in docs)
+        {
+            var doc = emmaDoc?.ToDoc();
+            if (doc is null) continue;
+
+            var master = new MasterDocumento
+            {
+                Id = doc.Id,
+                Fornitore = doc.Mittente,
+                NumeroDocumento = doc.NumeroBolla,
+                DataDocumento = doc.DataBolla,
+                StatoDocumento = emmaDoc?.stato == 0 ? "Aperto" : "Chiuso",
+                TipDocumento = doc.TipoDocumento,
+                Allegato = emmaDoc?.allegato
+            };
+
+            var dettagli = new ObservableCollection<RigheDocumento>();
+            foreach (var articolo in doc.Articoli)
+            {
+                dettagli.Add(new RigheDocumento
+                {
+                    IdRiga = articolo.Id_Riga,
+                    IdMaster = articolo.Id_Master,
+                    CodiceArticolo = articolo.Codice,
+                    DescrizioneArticolo = articolo.Descrizione,
+                    Qta = articolo.Quantita,
+                    IVA = articolo.Iva,
+                    Imponibile = articolo.Imponibile,
+                    Totale = articolo.Totale,
+                    UnitaMisura = articolo.UnitaMisura
+                });
+            }
+
+            master.Dettagli = dettagli;
+            risultato.Add(master);
+        }
+
+        Documenti = risultato
+            .OrderBy(x => x.Fornitore)
+            .ThenBy(x => x.DataDocumento)
+            .ThenBy(x => x.NumeroDocumento)
+            .ToList();
+
+        _espanso = null;
+    }
+
+    /// <summary>Replica di Button_OnClick ("Mostra Documenti ...")</summary>
+    private async Task MostraDocumenti_Click()
+    {
+        try
+        {
+            _busy = true;
+            LoadDataGridData(await CaricaDati());
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Replica di Button_OnCambioStato</summary>
+    private async Task CambioStato_Click(MasterDocumento master)
+    {
+        if (!await _dialogs.ConfermaAsync()) return;
+
+        try
+        {
+            _busy = true;
+            await _docService.CambioStato(master);
+            LoadDataGridData(await CaricaDati());
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Replica di Button_OnElimina</summary>
+    private async Task Elimina_Click(MasterDocumento master)
+    {
+        if (!await _dialogs.ConfermaAsync()) return;
+
+        try
+        {
+            _busy = true;
+            await _docService.CancellaDocumento(master);
+            LoadDataGridData(await CaricaDati());
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Replica di OnLoadPdfClick — qui il PDF si apre nel viewer inline.</summary>
+    private void Pdf_Click(MasterDocumento master)
+    {
+        if (master.Allegato is null || master.Allegato.Length == 0) return;
+        _pdfViewer.Mostra(master.Allegato, $"doc_{master.Id}.pdf");
+    }
+
+    /// <summary>Replica di CloseAllButton_OnClick ("Chiudi Stato" su tutti i documenti a video)</summary>
+    private async Task ChiudiStato_Click()
+    {
+        if (!Documenti.Any()) return;
+        if (!await _dialogs.ConfermaAsync()) return;
+
+        try
+        {
+            _busy = true;
+
+            foreach (var master in Documenti.ToList())
+            {
+                await _docService.CambioStato(master);
+            }
+
+            LoadDataGridData(await CaricaDati());
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>
+    /// Replica di OnElementLostFocus: ogni modifica di cella viene inviata
+    /// subito all'API con PUT /api/v1/doc/riga.
+    /// </summary>
+    private async Task AggiornaCampo(RigheDocumento riga, Action applica)
+    {
+        applica();
+
+        // Le righe non ancora salvate (IdRiga vuoto) si inviano con il pulsante "Aggiungi"
+        if (string.IsNullOrWhiteSpace(riga.IdRiga)) return;
+
+        try
+        {
+            _busy = true;
+
+            var articoloBolla = new ArticoloBolla
+            {
+                Id_Master = riga.IdMaster ?? string.Empty,
+                Id_Riga = riga.IdRiga,
+                Quantita = riga.Qta,
+                Descrizione = riga.DescrizioneArticolo ?? string.Empty,
+                Codice = riga.CodiceArticolo ?? string.Empty,
+                Imponibile = riga.Imponibile,
+                Totale = riga.Totale,
+                UnitaMisura = riga.UnitaMisura ?? string.Empty,
+                Iva = riga.IVA ?? string.Empty
+            };
+
+            await _docService.InviaModificaAllApi(articoloBolla);
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Replica di AggiungiRiga_Click ("+ Nuova Riga")</summary>
+    private void NuovaRiga_Click(MasterDocumento master)
+    {
+        master.Dettagli.Add(new RigheDocumento
+        {
+            IdRiga = "",
+            IdMaster = master.Id,
+            CodiceArticolo = "Nuovo Codice",
+            DescrizioneArticolo = "Nuova Descrizione",
+            UnitaMisura = "",
+            Qta = 0,
+            Imponibile = 0,
+            IVA = "",
+            Totale = 0
+        });
+    }
+
+    /// <summary>Replica di EliminaRiga_Click: il pulsante fa "Aggiungi" o "Elimina" a seconda dello stato riga.</summary>
+    private async Task RigaAzione_Click(MasterDocumento master, RigheDocumento riga)
+    {
+        if (!await _dialogs.ConfermaAsync()) return;
+
+        try
+        {
+            _busy = true;
+
+            if (string.IsNullOrWhiteSpace(riga.IdRiga))
+            {
+                // POST /api/v1/doc/riga
+                var ok = await _docService.InviaAddAllApi(riga);
+                if (ok)
+                {
+                    // L'API assegna un nuovo Guid: ricarichiamo per allinearci
+                    LoadDataGridData(await CaricaDati());
+                }
+                else
+                {
+                    await _dialogs.ErroreAsync("Inserimento riga non riuscito.");
+                }
+            }
+            else
+            {
+                // DELETE /api/v1/doc/riga
+                var ok = await _docService.InviaEliminazioneAllApi(riga);
+                if (ok)
+                {
+                    master.Dettagli.Remove(riga);
+                }
+                else
+                {
+                    await _dialogs.ErroreAsync("Eliminazione riga non riuscita.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Replica di ExportButton_OnClick — genera il CSV e lo fa scaricare dal browser.</summary>
+    private async Task Export_Click()
+    {
+        if (!Documenti.Any()) return;
+
+        const string sep = ";";
+        var sb = new StringBuilder();
+
+        try
+        {
+            _busy = true;
+
+            var fornitori = await _fornitoriService.GetFornitoriAsync();
+
+            foreach (var doc in Documenti)
+            {
+                string fornExt = string.Empty;
+                var forn = fornitori.FirstOrDefault(x =>
+                    x.descrizione.Equals(doc.Fornitore, StringComparison.InvariantCultureIgnoreCase));
+                if (forn is not null) fornExt = forn.riferimento;
+
+                sb.AppendLine($"M{sep}{doc.Id}{sep}{doc.Fornitore}{sep}{doc.NumeroDocumento}{sep}{doc.DataDocumento}{sep}{doc.TipDocumento}{sep}{doc.StatoDocumento}{sep}{fornExt}");
+
+                var articoli = await _articoliService.GetArticoliFornitore(doc.Fornitore ?? string.Empty);
+
+                foreach (var item in doc.Dettagli)
+                {
+                    var art = articoli.FirstOrDefault(x =>
+                        x.descrizione.Equals(item.DescrizioneArticolo, StringComparison.InvariantCultureIgnoreCase)
+                        || x.codice.Equals(item.CodiceArticolo, StringComparison.InvariantCultureIgnoreCase));
+
+                    string artExtCodice = art?.rifcodice ?? string.Empty;
+                    string artExtDescrizione = art?.rifdescrizione ?? string.Empty;
+
+                    sb.AppendLine($"R{sep}{item.IdRiga}{sep}{item.CodiceArticolo}{sep}{item.DescrizioneArticolo}{sep}{item.Qta}{sep}{item.UnitaMisura}{sep}{artExtCodice}{sep}{artExtDescrizione}");
+                }
+            }
+
+            await JS.InvokeVoidAsync("emma.downloadText", $"{Guid.NewGuid()}.csv", sb.ToString());
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

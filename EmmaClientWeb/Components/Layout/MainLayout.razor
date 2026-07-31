@@ -1,0 +1,74 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject UserSession Session
+@inject NavigationManager Nav
+
+<div class="emma-shell">
+    <div class="emma-titlebar">
+        @if (IsLoginPage)
+        {
+            <span class="emma-window-title">Emma Client 1.0.3</span>
+        }
+        else
+        {
+            @if (!IsDashboard)
+            {
+                <button class="btn btn-default btn-sm" @onclick="@(() => Nav.NavigateTo("/dashboard"))">← Indietro</button>
+            }
+            <span class="emma-window-title">@Title</span>
+            <span class="emma-spacer"></span>
+            @if (Session.IsAuthenticated)
+            {
+                <span class="emma-user">@Session.User</span>
+                <button class="btn btn-grey btn-sm" @onclick="Esci">Esci</button>
+            }
+        }
+    </div>
+
+    <div class="emma-content">
+        @Body
+    </div>
+</div>
+
+@code {
+    private string Path => Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0].TrimEnd('/').ToLowerInvariant();
+
+    // Titolo della "Window" corrente, come i Title delle Window Avalonia
+    private string Title => Path switch
+    {
+        "dashboard" => "Emma Client 1.0.3",
+        "documenti/carica" => "Caricamento Documenti",
+        "documenti" => "Visualizzatore Documenti",
+        "fornitori" => "Fornitori",
+        "articoli" => "Articoli Fornitore",
+        "log" => "Log",
+        "password" => "Cambio Password",
+        _ => "Emma Client 1.0.3"
+    };
+
+    private bool IsLoginPage => Path.Length == 0 || Path == "login";
+    private bool IsDashboard => Path == "dashboard";
+
+    protected override void OnInitialized()
+    {
+        Session.Changed += OnStateChanged;
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+        => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Session.Changed -= OnStateChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+
+    private void Esci()
+    {
+        Session.SignOut();
+        Nav.NavigateTo("/");
+    }
+}

@@ -1,0 +1,304 @@
+@page "/documenti/carica"
+@layout MainLayout
+@using System.Globalization
+@inject UserSession Session
+@inject EmmaServiceFactory Factory
+@inject NavigationManager Nav
+
+@* Replica di Forms/LoadDoc/LoadDdtForm.axaml *@
+
+<div class="emma-page @(_busy ? "busy" : "")">
+
+    <!-- Border toolbar superiore -->
+    <div class="emma-toolbar">
+        <div class="emma-toolbar-left">
+            <label class="btn btn-blue" style="margin:0">
+                <span>📁</span><span>Sfoglia ...</span>
+                <InputFile OnChange="OnFileSelected" accept=".pdf,.xml" style="display:none" disabled="@_busy" />
+            </label>
+
+            <span class="file-label @_fileLabelCss">@_nomeFile</span>
+        </div>
+
+        <div class="emma-toolbar-right">
+            @if (_documentoCaricato)
+            {
+                <button class="btn btn-green" @onclick="BtnAggiungi_Click" disabled="@_busy">
+                    <span>➕</span><span>Aggiungi Riga</span>
+                </button>
+                <button class="btn btn-red" @onclick="BtnElimina_Click" disabled="@(_busy || _selezionato is null)">
+                    <span>🗑️</span><span>Elimina Riga</span>
+                </button>
+                <button class="btn btn-grey" @onclick="Pulisci" disabled="@_busy">
+                    <span>✖</span><span>Pulisci</span>
+                </button>
+            }
+            @if (_pdfBytes is not null)
+            {
+                <button class="btn btn-dodger" @onclick="ApriPdf" disabled="@_busy">
+                    <span>📄</span><span>Vedi PDF</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- Griglia campi testata documento -->
+    <div class="doc-fields">
+        <div class="doc-field">
+            <label>Fornitore:</label>
+            <input class="emma-input" placeholder="Nome fornitore..." @bind="_fornitore" />
+        </div>
+
+        <div class="doc-field">
+            <label>Tipo Doc.:</label>
+            <select class="emma-select" @bind="_tipoDocumentoIndex">
+                <option value="-1">Seleziona tipo...</option>
+                @for (int i = 0; i < TipiDocumento.Length; i++)
+                {
+                    var idx = i;
+                    <option value="@idx">@TipiDocumento[idx]</option>
+                }
+            </select>
+        </div>
+
+        <div class="doc-field">
+            <label>N° Documento:</label>
+            <input class="emma-input" placeholder="Numero Documento..." @bind="_numeroDocumento" />
+        </div>
+
+        <div class="doc-field">
+            <label>Data Doc.:</label>
+            <input class="emma-input" type="date" @bind="_dataDocumento" />
+        </div>
+
+        <div class="doc-field">
+            <label>Imponibile (€):</label>
+            <input class="emma-input emma-input-num" type="number" step="0.01" @bind="_imponibile" />
+        </div>
+
+        <div class="doc-field">
+            <label>Totale (€):</label>
+            <input class="emma-input emma-input-num" type="number" step="0.01" @bind="_totale" />
+        </div>
+    </div>
+
+    <!-- DataGrid articoli -->
+    <div class="emma-grid-wrapper">
+        <table class="emma-grid">
+            <thead>
+                <tr>
+                    <th style="width:120px">Codice</th>
+                    <th>Descrizione</th>
+                    <th style="width:100px">Quantità</th>
+                    <th style="width:70px">U.M.</th>
+                    <th style="width:120px">Totale (€)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!ListaArticoli.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            Seleziona un file PDF o XML con "Sfoglia ..." per estrarre i dati del documento.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var a in ListaArticoli)
+                    {
+                        <tr @key="a" class="@(ReferenceEquals(a, _selezionato) ? "selected" : "")" @onclick="() => _selezionato = a">
+                            <td><input class="cell-edit" value="@a.Codice" @onchange="e => a.Codice = e.Value?.ToString() ?? string.Empty" /></td>
+                            <td><input class="cell-edit" value="@a.Descrizione" @onchange="e => a.Descrizione = e.Value?.ToString() ?? string.Empty" /></td>
+                            @* input type=number vuole sempre il formato invariante *@
+                            <td><input class="cell-edit cell-right" type="number" step="1" value="@Inv(a.Quantita)" @onchange="e => a.Quantita = ToDouble(e.Value)" /></td>
+                            <td><input class="cell-edit" value="@a.UnitaMisura" @onchange="e => a.UnitaMisura = e.Value?.ToString() ?? string.Empty" /></td>
+                            <td><input class="cell-edit cell-right" type="number" step="0.01" value="@Inv(a.Totale)" @onchange="e => a.Totale = ToDouble(e.Value)" /></td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<PdfViewer @ref="_pdfViewer" />
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    private static readonly string[] TipiDocumento = ArticoliServiceManager.GetTipodocs();
+
+    private List<ArticoloBolla> ListaArticoli { get; set; } = new();
+    private ArticoloBolla? _selezionato;
+
+    private string _fornitore = string.Empty;
+    private string _numeroDocumento = string.Empty;
+    private int _tipoDocumentoIndex = -1;
+    private DateTime? _dataDocumento;
+    private decimal _imponibile;
+    private decimal _totale;
+
+    private string _nomeFile = "Nessun file selezionato";
+    private string _fileLabelCss = string.Empty;
+    private bool _documentoCaricato;
+    private bool _busy;
+
+    private byte[]? _pdfBytes;
+    private string _pdfNome = "documento.pdf";
+
+    private EmmaDialogs _dialogs = default!;
+    private PdfViewer _pdfViewer = default!;
+    private IDocService _docService = default!;
+
+    // 50 MB come limite di upload
+    private const long MaxFileSize = 50L * 1024 * 1024;
+
+    protected override void OnInitialized()
+    {
+        if (!Session.IsAuthenticated) { Nav.NavigateTo("/"); return; }
+        _docService = Factory.Docs();
+    }
+
+    private static double ToDouble(object? value)
+        => double.TryParse(value?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var d)
+            ? d
+            : double.TryParse(value?.ToString(), NumberStyles.Any, CultureInfo.CurrentCulture, out var d2) ? d2 : 0;
+
+    /// <summary>Formato invariante richiesto da input type="number".</summary>
+    private static string Inv(double v) => v.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Replica di CleanUI()</summary>
+    private void CleanUI()
+    {
+        _fornitore = string.Empty;
+        _numeroDocumento = string.Empty;
+        _tipoDocumentoIndex = -1;
+        _dataDocumento = null;
+        _imponibile = 0;
+        _totale = 0;
+        ListaArticoli.Clear();
+        _selezionato = null;
+    }
+
+    private void Pulisci()
+    {
+        CleanUI();
+        _documentoCaricato = false;
+        _pdfBytes = null;
+        _nomeFile = "Nessun file selezionato";
+        _fileLabelCss = string.Empty;
+    }
+
+    /// <summary>Replica di OpenFilePickerAsync() + InviaFileAllApiAsync()</summary>
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+
+        try
+        {
+            _busy = true;
+            CleanUI();
+            _documentoCaricato = false;
+
+            _nomeFile = $"Elaborazione in corso: {file.Name}...";
+            _fileLabelCss = "working";
+            StateHasChanged();
+
+            // Copiamo il contenuto in memoria: serve sia per l'API sia per il viewer PDF
+            using var ms = new MemoryStream();
+            await using (var stream = file.OpenReadStream(MaxFileSize))
+            {
+                await stream.CopyToAsync(ms);
+            }
+            var bytes = ms.ToArray();
+
+            if (file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                _pdfBytes = bytes;
+                _pdfNome = file.Name;
+            }
+            else
+            {
+                _pdfBytes = null;
+            }
+
+            // Chiamata a Emma.Services: POST multipart /api/v1/doc
+            using var uploadStream = new MemoryStream(bytes);
+            DatiBolla? datiBolla = await _docService.InviaFileAsync(uploadStream, file.Name);
+
+            if (datiBolla?.Articoli is not null)
+            {
+                _fornitore = datiBolla.Mittente;
+
+                _ = int.TryParse(datiBolla.TipoDocumento, out int tipoDoc);
+                _tipoDocumentoIndex = tipoDoc >= 0 && tipoDoc < TipiDocumento.Length ? tipoDoc : -1;
+
+                _numeroDocumento = datiBolla.NumeroBolla;
+                _imponibile = (decimal)datiBolla.Imponibile;
+                _totale = (decimal)datiBolla.Totale;
+
+                if (!string.IsNullOrEmpty(datiBolla.DataBolla)
+                    && DateTime.TryParseExact(datiBolla.DataBolla, "yyyy-MM-dd",
+                        CultureInfo.InvariantCulture, DateTimeStyles.None, out var dataParsed))
+                {
+                    _dataDocumento = dataParsed;
+                }
+                else
+                {
+                    _dataDocumento = null;
+                }
+
+                ListaArticoli = datiBolla.Articoli.ToList();
+                _documentoCaricato = true;
+            }
+
+            _nomeFile = file.Name;
+            _fileLabelCss = "done";
+
+            // Nel desktop veniva aperto il PDF nel visualizzatore di sistema
+            if (_pdfBytes is not null)
+            {
+                _pdfViewer.Mostra(_pdfBytes, _pdfNome);
+            }
+        }
+        catch (Exception ex)
+        {
+            _nomeFile = "Nessun file selezionato";
+            _fileLabelCss = string.Empty;
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void ApriPdf()
+    {
+        if (_pdfBytes is not null) _pdfViewer.Mostra(_pdfBytes, _pdfNome);
+    }
+
+    /// <summary>Replica di BtnAggiungi_Click</summary>
+    private void BtnAggiungi_Click()
+    {
+        var nuovo = new ArticoloBolla
+        {
+            Codice = "NEW",
+            Descrizione = "Nuovo Articolo (fai clic per modificare)",
+            Quantita = 0,
+            UnitaMisura = "PZ",
+            Totale = 0
+        };
+        ListaArticoli.Add(nuovo);
+        _selezionato = nuovo;
+    }
+
+    /// <summary>Replica di BtnElimina_Click</summary>
+    private void BtnElimina_Click()
+    {
+        if (_selezionato is null) return;
+        ListaArticoli.Remove(_selezionato);
+        _selezionato = null;
+    }
+}

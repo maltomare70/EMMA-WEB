@@ -1,0 +1,52 @@
+@page "/dashboard"
+@layout MainLayout
+@inject UserSession Session
+@inject NavigationManager Nav
+
+@* Replica di MainWindow.axaml - UniformGrid Rows=2 Columns=4 con card 200x200 *@
+
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1>Benvenuto</h1>
+        <p>Seleziona un'operazione per iniziare</p>
+    </div>
+
+    <div class="dashboard-grid">
+        <a class="dashboard-card" href="/documenti/carica">
+            <img src="img/doc.png" alt="Carica Documenti" />
+            <span>Carica Documenti</span>
+        </a>
+
+        <a class="dashboard-card" href="/documenti">
+            <img src="img/visdoc.png" alt="Visualizza Documenti" />
+            <span>Visualizza Documenti</span>
+        </a>
+
+        <a class="dashboard-card" href="/fornitori">
+            <img src="img/forn.png" alt="Fornitori" />
+            <span>Fornitori</span>
+        </a>
+
+        <a class="dashboard-card" href="/articoli">
+            <img src="img/articoli.png" alt="Articoli" />
+            <span>Articoli</span>
+        </a>
+
+        <a class="dashboard-card" href="/log">
+            <img src="img/log.png" alt="Log" />
+            <span>Log</span>
+        </a>
+
+        <a class="dashboard-card" href="/password">
+            <img src="img/pwd.png" alt="Cambio Password" />
+            <span>Cambio Password</span>
+        </a>
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        if (!Session.IsAuthenticated) Nav.NavigateTo("/");
+    }
+}

@@ -1,0 +1,231 @@
+@page "/fornitori"
+@layout MainLayout
+@inject UserSession Session
+@inject EmmaServiceFactory Factory
+@inject NavigationManager Nav
+
+@* Replica di Forms/Fornitori/FornitoriForm.axaml *@
+
+<div class="emma-page @(_busy ? "busy" : "")">
+
+    <div class="emma-toolbar">
+        <div class="emma-toolbar-left">
+            <button class="btn btn-green2" @onclick="Aggiungi_Click" disabled="@_busy">Aggiungi Fornitore</button>
+            <button class="btn btn-red2" @onclick="Elimina_Click" disabled="@(_busy || _selezionato is null)">Elimina Selezionato</button>
+            <button class="btn btn-info" @onclick="Salva_Click" disabled="@_busy">Salva Modifiche</button>
+            <div class="emma-separator"></div>
+            <button class="btn btn-default" @onclick="Ricarica" disabled="@_busy">🔄 Ricarica</button>
+            @if (ModificheInSospeso > 0)
+            {
+                <span class="file-label">@ModificheInSospeso modifica/e non salvate</span>
+            }
+        </div>
+    </div>
+
+    <div class="emma-grid-wrapper">
+        <table class="emma-grid">
+            <thead>
+                <tr>
+                    <th style="width:60px">ID</th>
+                    <th style="width:40%">Descrizione</th>
+                    <th style="width:30%">Riferimento</th>
+                    <th style="width:80px">Score</th>
+                    <th style="width:150px">Data Creazione</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!ListaFornitori.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="empty-state">Nessun fornitore presente.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var f in ListaFornitori)
+                    {
+                        <tr @key="f" class="@RowCss(f)" @onclick="() => _selezionato = f">
+                            <td>@(f.id == 0 ? "" : f.id.ToString())</td>
+                            <td>
+                                <input class="cell-edit" value="@f.descrizione"
+                                       @onchange="e => SetDescrizione(f, e.Value?.ToString())" />
+                            </td>
+                            <td>
+                                <input class="cell-edit" value="@f.riferimento"
+                                       @onchange="e => SetRiferimento(f, e.Value?.ToString())" />
+                            </td>
+                            <td class="cell-right">@f.score</td>
+                            <td>@f.data_creazione.ToString("dd/MM/yyyy HH:mm")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    private List<EmmaFornitori> ListaFornitori { get; set; } = new();
+    private EmmaFornitori? _selezionato;
+    private bool _busy;
+    private EmmaDialogs _dialogs = default!;
+    private IFornitoriService _fornitoriService = default!;
+
+    private int ModificheInSospeso => ListaFornitori.Count(f => f.id == 0 || f.IsDirty);
+
+    protected override void OnInitialized()
+    {
+        if (!Session.IsAuthenticated) { Nav.NavigateTo("/"); return; }
+
+        _fornitoriService = Factory.Fornitori();
+    }
+
+    // Il caricamento avviene dopo il primo render, quando i @ref dei dialog sono valorizzati
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Session.IsAuthenticated) return;
+
+        await CaricaDati();
+        StateHasChanged();
+    }
+
+    private string RowCss(EmmaFornitori f)
+    {
+        var css = new List<string>();
+        if (ReferenceEquals(f, _selezionato)) css.Add("selected");
+        if (f.id == 0) css.Add("row-new");
+        else if (f.IsDirty) css.Add("row-dirty");
+        return string.Join(' ', css);
+    }
+
+    private void SetDescrizione(EmmaFornitori f, string? valore)
+    {
+        f.descrizione = valore ?? string.Empty; // IsDirty gestito da SetProperty dell'entity
+    }
+
+    private void SetRiferimento(EmmaFornitori f, string? valore)
+    {
+        f.riferimento = valore ?? string.Empty;
+    }
+
+    /// <summary>Replica di FornitoriForm.CaricaDati()</summary>
+    private async Task CaricaDati()
+    {
+        try
+        {
+            _busy = true;
+            var lista = await _fornitoriService.GetFornitoriAsync();
+            if (lista is not null)
+            {
+                foreach (var f in lista) f.IsDirty = false; // reset dopo la deserializzazione
+                ListaFornitori = lista.OrderBy(x => x.descrizione).ToList();
+            }
+            _selezionato = null;
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task Ricarica()
+    {
+        if (ModificheInSospeso > 0)
+        {
+            if (!await _dialogs.ConfermaAsync("Ci sono modifiche non salvate. Ricaricare comunque?")) return;
+        }
+        await CaricaDati();
+    }
+
+    /// <summary>Replica di Aggiungi_Click</summary>
+    private void Aggiungi_Click()
+    {
+        var nuovo = new EmmaFornitori
+        {
+            descrizione = "Nuovo Fornitore...",
+            riferimento = ""
+        };
+
+        ListaFornitori.Add(nuovo);
+        _selezionato = nuovo;
+    }
+
+    /// <summary>Replica di Elimina_Click</summary>
+    private async Task Elimina_Click()
+    {
+        if (_selezionato is null) return;
+
+        // Riga non ancora salvata: la si rimuove solo dalla vista
+        if (_selezionato.id == 0)
+        {
+            ListaFornitori.Remove(_selezionato);
+            _selezionato = null;
+            return;
+        }
+
+        if (!await _dialogs.ConfermaAsync()) return;
+
+        try
+        {
+            _busy = true;
+            await _fornitoriService.DeleteFornitore(_selezionato);
+            ListaFornitori.Remove(_selezionato);
+            _selezionato = null;
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Replica di Salva_Click</summary>
+    private async Task Salva_Click()
+    {
+        if (!await _dialogs.ConfermaAsync()) return;
+
+        int aggiornati = 0;
+        int inseriti = 0;
+
+        try
+        {
+            _busy = true;
+
+            foreach (var fornitore in ListaFornitori.ToList())
+            {
+                if (fornitore.id == 0)
+                {
+                    await _fornitoriService.AddFornitore(fornitore);
+                    inseriti++;
+                }
+                else if (fornitore.IsDirty)
+                {
+                    await _fornitoriService.UpdateFornitore(fornitore);
+                    fornitore.IsDirty = false;
+                    aggiornati++;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+            return;
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        await CaricaDati();
+        await _dialogs.InfoAsync($"Salvataggio completato: {inseriti} inseriti, {aggiornati} aggiornati.");
+    }
+}

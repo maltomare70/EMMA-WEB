@@ -1,0 +1,56 @@
+@implements IDisposable
+@inject PdfCache Cache
+
+@* Sostituisce l'apertura del PDF nel visualizzatore di sistema (Process.Start del client Avalonia)
+   con il visualizzatore nativo del browser dentro una finestra modale. *@
+
+@if (_visibile && _id is not null)
+{
+    <div class="pdf-overlay" @onclick="Chiudi">
+        <div class="pdf-window" @onclick:stopPropagation="true">
+            <div class="pdf-header">
+                <span class="title">@_nomeFile</span>
+                <a class="btn btn-blue btn-sm" href="@($"/pdf/{_id}?download=1")" target="_blank">💾 Scarica</a>
+                <a class="btn btn-blue btn-sm" href="@($"/pdf/{_id}")" target="_blank">↗ Nuova scheda</a>
+                <button class="btn btn-grey btn-sm" @onclick="Chiudi">❌ Chiudi</button>
+            </div>
+            <iframe src="@($"/pdf/{_id}#toolbar=1")" title="@_nomeFile"></iframe>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _visibile;
+    private string? _id;
+    private string _nomeFile = "documento.pdf";
+
+    public void Mostra(byte[] pdfBytes, string nomeFile)
+    {
+        if (pdfBytes is null || pdfBytes.Length == 0) return;
+
+        Libera();
+
+        _nomeFile = string.IsNullOrWhiteSpace(nomeFile) ? "documento.pdf" : nomeFile;
+        _id = Cache.Put(pdfBytes, _nomeFile);
+        _visibile = true;
+        StateHasChanged();
+    }
+
+    public void Chiudi()
+    {
+        _visibile = false;
+        Libera();
+        StateHasChanged();
+    }
+
+    private void Libera()
+    {
+        if (_id is not null)
+        {
+            Cache.Remove(_id);
+            _id = null;
+        }
+    }
+
+    public void Dispose() => Libera();
+}

@@ -1,0 +1,85 @@
+@* Sostituisce ConfermaDialog.axaml e DialogHelper.ShowErrorDialog del client Avalonia.
+   Si inserisce una volta per pagina e si pilota via metodi asincroni. *@
+
+@if (_confermaVisibile)
+{
+    <div class="dialog-overlay" @onclick="@(() => Rispondi(false))">
+        <div class="dialog-window" @onclick:stopPropagation="true">
+            <div class="win-title">Conferma</div>
+            <div class="dialog-body">
+                <div class="msg">@_confermaMessaggio</div>
+                <div class="dialog-actions">
+                    @* Nell'originale Sì è rosso e No è verde *@
+                    <button class="btn btn-red" @onclick="@(() => Rispondi(true))">Sì</button>
+                    <button class="btn btn-green" @onclick="@(() => Rispondi(false))">No</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_messaggioVisibile)
+{
+    <div class="dialog-overlay" @onclick="ChiudiMessaggio">
+        <div class="dialog-window" @onclick:stopPropagation="true">
+            <div class="win-title">@_messaggioTitolo</div>
+            <div class="dialog-body">
+                <div class="msg">@_messaggioTesto</div>
+                <div class="dialog-actions">
+                    <button class="btn btn-dodger" @onclick="ChiudiMessaggio">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _confermaVisibile;
+    private string _confermaMessaggio = "Sei sicuro di voler procedere?";
+    private TaskCompletionSource<bool>? _confermaTcs;
+
+    private bool _messaggioVisibile;
+    private string _messaggioTitolo = "Informazione";
+    private string _messaggioTesto = string.Empty;
+    private TaskCompletionSource<bool>? _messaggioTcs;
+
+    /// <summary>Equivalente di: var dialog = new ConfermaDialog(); await dialog.ShowDialog&lt;bool?&gt;(this);</summary>
+    public Task<bool> ConfermaAsync(string messaggio = "Sei sicuro di voler procedere?")
+    {
+        _confermaMessaggio = messaggio;
+        _confermaVisibile = true;
+        _confermaTcs = new TaskCompletionSource<bool>();
+        StateHasChanged();
+        return _confermaTcs.Task;
+    }
+
+    /// <summary>Equivalente di DialogHelper.ShowErrorDialog(this, titolo, messaggio).</summary>
+    public Task MostraMessaggioAsync(string titolo, string messaggio)
+    {
+        _messaggioTitolo = titolo;
+        _messaggioTesto = messaggio;
+        _messaggioVisibile = true;
+        _messaggioTcs = new TaskCompletionSource<bool>();
+        StateHasChanged();
+        return _messaggioTcs.Task;
+    }
+
+    public Task ErroreAsync(string messaggio) => MostraMessaggioAsync("Errore", messaggio);
+    public Task InfoAsync(string messaggio) => MostraMessaggioAsync("Informazione", messaggio);
+
+    private void Rispondi(bool esito)
+    {
+        _confermaVisibile = false;
+        _confermaTcs?.TrySetResult(esito);
+        _confermaTcs = null;
+        StateHasChanged();
+    }
+
+    private void ChiudiMessaggio()
+    {
+        _messaggioVisibile = false;
+        _messaggioTcs?.TrySetResult(true);
+        _messaggioTcs = null;
+        StateHasChanged();
+    }
+}

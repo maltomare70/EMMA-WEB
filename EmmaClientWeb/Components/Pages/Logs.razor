@@ -1,0 +1,103 @@
+@page "/log"
+@layout MainLayout
+@inject UserSession Session
+@inject EmmaServiceFactory Factory
+@inject NavigationManager Nav
+
+@* Replica di Forms/Logs/LogForms.axaml *@
+
+<div class="emma-page @(_busy ? "busy" : "")">
+
+    <div class="emma-toolbar">
+        <div class="emma-toolbar-left">
+            <button class="btn btn-default" @onclick="CaricaDati" disabled="@_busy">🔄 Ricarica</button>
+            <div class="emma-separator"></div>
+            <span class="file-label done">@ListaLog.Count righe di log</span>
+        </div>
+    </div>
+
+    <div class="emma-grid-wrapper">
+        <table class="emma-grid">
+            <thead>
+                <tr>
+                    <th style="width:60px">ID</th>
+                    <th style="width:180px">Data Creazione</th>
+                    <th style="width:150px">Token Input</th>
+                    <th style="width:150px">Token Output</th>
+                    <th style="width:150px">Token Totali</th>
+                    <th style="width:200px">Costo €.</th>
+                    <th style="width:100px">Stato</th>
+                    <th>Note</th>
+                    <th style="width:100px">Durata (sec.)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!ListaLog.Any())
+                {
+                    <tr><td colspan="9" class="empty-state">Nessun log disponibile.</td></tr>
+                }
+                else
+                {
+                    @foreach (var l in ListaLog)
+                    {
+                        <tr>
+                            <td>@l.id</td>
+                            <td>@l.data_creazione.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="cell-right">@l.token_input</td>
+                            <td class="cell-right">@l.token_output</td>
+                            <td class="cell-right">@l.token_tot</td>
+                            <td class="cell-right">@l.cost.ToString("0.000000")</td>
+                            <td class="cell-center">@l.stato</td>
+                            <td>@l.message</td>
+                            <td class="cell-right">@l.duration</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    private List<EmmaLog> ListaLog { get; set; } = new();
+    private bool _busy;
+    private EmmaDialogs _dialogs = default!;
+    private Emma.Services.Services.LogService _logService = default!;
+
+    protected override void OnInitialized()
+    {
+        if (!Session.IsAuthenticated) { Nav.NavigateTo("/"); return; }
+
+        _logService = Factory.Logs();
+    }
+
+    // Il caricamento avviene dopo il primo render, quando i @ref dei dialog sono valorizzati
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Session.IsAuthenticated) return;
+
+        await CaricaDati();
+        StateHasChanged();
+    }
+
+    /// <summary>Replica di LogForms.CaricaDati() — ordinamento discendente per data.</summary>
+    private async Task CaricaDati()
+    {
+        try
+        {
+            _busy = true;
+            var lista = await _logService.GetAllAsync();
+            ListaLog = (lista ?? new List<EmmaLog>()).OrderByDescending(x => x.data_creazione).ToList();
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

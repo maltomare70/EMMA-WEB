@@ -1,0 +1,28 @@
+@* Prerender disattivato: lo stato di sessione (UserSession) vive nel circuito Blazor,
+   quindi il rendering statico iniziale non deve valutare l'autenticazione. *@
+
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="css/emma.css" />
+    <link rel="icon" type="image/png" href="img/doc.png" />
+    <HeadOutlet @rendermode="RenderMode" />
+    <title>Emma Client Web 1.0.3</title>
+</head>
+
+<body>
+    <Routes @rendermode="RenderMode" />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="js/emma.js"></script>
+</body>
+
+</html>
+
+@code {
+    private static readonly IComponentRenderMode RenderMode =
+        new InteractiveServerRenderMode(prerender: false);
+}

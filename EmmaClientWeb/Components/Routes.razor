@@ -1,0 +1,16 @@
+@using EmmaClientWeb.Components.Layout
+
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(MainLayout)">
+            <div class="emma-page">
+                <h1>Pagina non trovata</h1>
+                <p>L'indirizzo richiesto non esiste.</p>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

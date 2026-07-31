@@ -1,0 +1,695 @@
+/* ============================================================
+   Emma Client Web - tema replicato dal client Avalonia
+   Palette originale:
+     sfondo dashboard #F5F7FA - titolo #1E293B - sottotitolo #64748B
+     testo card #334155 - bordo card #E2E8F0
+     blu azione #2196F3 / DodgerBlue - verde #4CAF50 / #2ecc71
+     rosso #F44336 / #e74c3c - grigio #757575
+   ============================================================ */
+
+:root {
+    --emma-bg: #F5F7FA;
+    --emma-title: #1E293B;
+    --emma-subtitle: #64748B;
+    --emma-card-text: #334155;
+    --emma-card-border: #E2E8F0;
+    --emma-blue: #2196F3;
+    --emma-dodger: #1E90FF;
+    --emma-green: #4CAF50;
+    --emma-green2: #2ecc71;
+    --emma-red: #F44336;
+    --emma-red2: #e74c3c;
+    --emma-grey: #757575;
+    --emma-panel-bg: #F9F9F9;
+    --emma-panel-border: #E0E0E0;
+    --emma-grid-border: #D0D0D0;
+    --emma-label: #333333;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    /* Avalonia usa il font Inter */
+    font-family: Inter, "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+    font-size: 14px;
+    color: var(--emma-label);
+    background: var(--emma-bg);
+}
+
+/* ---------------- Layout applicativo ---------------- */
+
+.emma-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Barra titolo che sostituisce il Title della Window Avalonia */
+.emma-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #FFFFFF;
+    border-bottom: 1px solid var(--emma-card-border);
+    padding: 8px 16px;
+    min-height: 46px;
+    flex: 0 0 auto;
+}
+
+.emma-titlebar .emma-window-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--emma-title);
+}
+
+.emma-titlebar .emma-spacer {
+    flex: 1 1 auto;
+}
+
+.emma-titlebar .emma-user {
+    font-size: 13px;
+    color: var(--emma-subtitle);
+}
+
+.emma-content {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* Equivalente del Grid Margin="15" delle Window */
+.emma-page {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* ---------------- Dashboard (MainWindow.axaml) ---------------- */
+
+.dashboard {
+    background: var(--emma-bg);
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+}
+
+.dashboard-header {
+    margin: 35px 0 15px 0;
+    text-align: center;
+}
+
+.dashboard-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--emma-title);
+    margin: 0;
+}
+
+.dashboard-header p {
+    font-size: 14px;
+    color: var(--emma-subtitle);
+    margin: 5px 0 0 0;
+}
+
+/* UniformGrid Rows=2 Columns=4, MaxWidth=1000 */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 200px);
+    justify-content: center;
+    align-content: center;
+    margin: 20px auto;
+    max-width: 1000px;
+    flex: 1 1 auto;
+}
+
+.dashboard-card {
+    width: 200px;
+    height: 200px;
+    margin: 12px;
+    background: #FFFFFF;
+    border: 1px solid var(--emma-card-border);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background .12s ease, box-shadow .12s ease, transform .12s ease;
+}
+
+.dashboard-card:hover {
+    background: #FAFCFF;
+    box-shadow: 0 4px 14px rgba(30, 41, 59, .10);
+    transform: translateY(-2px);
+}
+
+.dashboard-card:active {
+    transform: translateY(0);
+}
+
+.dashboard-card img {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+}
+
+.dashboard-card span {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--emma-card-text);
+    text-align: center;
+}
+
+@media (max-width: 900px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 200px);
+    }
+}
+
+/* ---------------- Toolbar / Border pannello ---------------- */
+
+/* Border Background=#F9F9F9 BorderBrush=#E0E0E0 CornerRadius=6 Padding=12 */
+.emma-toolbar {
+    background: var(--emma-panel-bg);
+    border: 1px solid var(--emma-panel-border);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    flex: 0 0 auto;
+}
+
+.emma-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+}
+
+.emma-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Border Width=1 Height=25 Background=#E0E0E0 */
+.emma-separator {
+    width: 1px;
+    height: 25px;
+    background: var(--emma-panel-border);
+    flex: 0 0 auto;
+}
+
+.emma-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.emma-field > label {
+    font-weight: 600;
+    color: var(--emma-label);
+    white-space: nowrap;
+}
+
+/* ---------------- Pulsanti ---------------- */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 15px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #FFFFFF;
+    cursor: pointer;
+    line-height: 1.2;
+    transition: filter .12s ease;
+}
+
+.btn:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+
+.btn:active:not(:disabled) {
+    filter: brightness(.94);
+}
+
+.btn:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+.btn-blue { background: var(--emma-blue); }
+.btn-dodger { background: DodgerBlue; }
+.btn-green { background: var(--emma-green); }
+.btn-green2 { background: var(--emma-green2); }
+.btn-red { background: var(--emma-red); }
+.btn-red2 { background: var(--emma-red2); }
+.btn-info { background: #3498db; }
+.btn-grey { background: var(--emma-grey); }
+
+/* Pulsante neutro stile Fluent default di Avalonia */
+.btn-default {
+    background: #F3F3F3;
+    color: #1A1A1A;
+    border: 1px solid #D6D6D6;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+/* ---------------- Input ---------------- */
+
+.emma-input,
+.emma-select {
+    height: 35px;
+    padding: 4px 8px;
+    border: 1px solid #C9C9C9;
+    border-radius: 3px;
+    background: #FFFFFF;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--emma-label);
+    outline: none;
+}
+
+.emma-input:focus,
+.emma-select:focus {
+    border-color: var(--emma-blue);
+    box-shadow: 0 0 0 1px var(--emma-blue);
+}
+
+.emma-input::placeholder {
+    color: #9A9A9A;
+}
+
+.emma-input[readonly] {
+    background: #F2F2F2;
+}
+
+.emma-input-num {
+    text-align: right;
+}
+
+.w-100 { width: 100%; }
+
+/* ---------------- Griglia campi documento (LoadDdtForm) ---------------- */
+
+.doc-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
+    row-gap: 10px;
+    margin-bottom: 15px;
+    flex: 0 0 auto;
+}
+
+.doc-field {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    align-items: center;
+}
+
+.doc-field > label {
+    font-weight: 600;
+    color: var(--emma-label);
+}
+
+/* ---------------- DataGrid ---------------- */
+
+.emma-grid-wrapper {
+    border: 1px solid var(--emma-grid-border);
+    background: #FFFFFF;
+    overflow: auto;
+    flex: 1 1 auto;
+    min-height: 120px;
+}
+
+table.emma-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+table.emma-grid thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #F3F3F3;
+    border: 1px solid var(--emma-grid-border);
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 700;
+    color: var(--emma-label);
+    white-space: nowrap;
+}
+
+table.emma-grid tbody td {
+    border: 1px solid var(--emma-grid-border);
+    padding: 4px 6px;
+    vertical-align: middle;
+}
+
+table.emma-grid tbody tr:hover {
+    background: #F4F8FD;
+}
+
+table.emma-grid tbody tr.selected {
+    background: #DCEBFB;
+}
+
+table.emma-grid tbody tr.expandable {
+    cursor: pointer;
+}
+
+.cell-right { text-align: right; }
+.cell-center { text-align: center; }
+.col-actions { width: 100px; text-align: center; }
+
+/* Input dentro le celle editabili (IsReadOnly=False dei DataGrid) */
+table.emma-grid input.cell-edit {
+    width: 100%;
+    height: 26px;
+    padding: 2px 4px;
+    border: 1px solid transparent;
+    background: transparent;
+    font-family: inherit;
+    font-size: 13px;
+    color: inherit;
+    outline: none;
+}
+
+table.emma-grid input.cell-edit:hover {
+    border-color: #D0D0D0;
+    background: #FFFFFF;
+}
+
+table.emma-grid input.cell-edit:focus {
+    border-color: var(--emma-blue);
+    background: #FFFFFF;
+}
+
+table.emma-grid input.cell-edit[readonly] {
+    border-color: transparent;
+    background: transparent;
+    color: #5A5A5A;
+}
+
+.row-dirty td {
+    background: #FFF9E0;
+}
+
+.row-new td {
+    background: #E9F8EC;
+}
+
+.expander {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--emma-label);
+    font-size: 11px;
+}
+
+/* RowDetails: Border Background=#F5F5F5 CornerRadius=4 Padding=15 Margin=5 */
+.row-details {
+    background: #F5F5F5;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 5px;
+}
+
+.row-details table.emma-grid {
+    background: #FFFFFF;
+    border: 1px solid #CCCCCC;
+}
+
+.row-details .add-row {
+    margin-top: 10px;
+}
+
+/* ---------------- Login ---------------- */
+
+.login-backdrop {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--emma-bg);
+}
+
+/* Window Width=350 Height=250 */
+.login-window {
+    width: 350px;
+    background: #FFFFFF;
+    border: 1px solid var(--emma-card-border);
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(30, 41, 59, .12);
+    overflow: hidden;
+}
+
+.login-window .win-title {
+    background: #FAFAFA;
+    border-bottom: 1px solid var(--emma-card-border);
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--emma-title);
+}
+
+.login-body {
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.login-body h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--emma-title);
+}
+
+.login-body .group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.login-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.login-actions .btn {
+    width: 80px;
+    padding: 8px 12px;
+}
+
+/* ---------------- Dialoghi (ConfermaDialog / errori) ---------------- */
+
+.dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.dialog-window {
+    background: #FFFFFF;
+    border-radius: 8px;
+    box-shadow: 0 16px 48px rgba(15, 23, 42, .25);
+    min-width: 300px;
+    max-width: 520px;
+    overflow: hidden;
+}
+
+.dialog-window .win-title {
+    background: #FAFAFA;
+    border-bottom: 1px solid var(--emma-card-border);
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--emma-title);
+}
+
+.dialog-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+}
+
+.dialog-body .msg {
+    font-size: 16px;
+    text-align: center;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.dialog-actions .btn {
+    width: 80px;
+    height: 35px;
+}
+
+/* ---------------- Cambio password ---------------- */
+
+.pwd-window {
+    width: 350px;
+    margin: 40px auto;
+    background: #FFFFFF;
+    border: 1px solid var(--emma-card-border);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.pwd-window .group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.pwd-window .group > label {
+    font-weight: 600;
+}
+
+.pwd-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* ---------------- Visualizzatore PDF ---------------- */
+
+.pdf-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+}
+
+.pdf-window {
+    background: #FFFFFF;
+    border-radius: 8px;
+    width: min(1100px, 94vw);
+    height: min(860px, 92vh);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 16px 48px rgba(15, 23, 42, .3);
+}
+
+.pdf-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #FAFAFA;
+    border-bottom: 1px solid var(--emma-card-border);
+}
+
+.pdf-header .title {
+    font-weight: 600;
+    color: var(--emma-title);
+    flex: 1 1 auto;
+}
+
+.pdf-window iframe {
+    flex: 1 1 auto;
+    border: none;
+    width: 100%;
+}
+
+/* ---------------- Stati / messaggi ---------------- */
+
+.file-label {
+    font-style: italic;
+    color: var(--emma-grey);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 420px;
+}
+
+.file-label.working {
+    color: orange;
+    font-style: italic;
+}
+
+.file-label.done {
+    color: #000000;
+    font-style: normal;
+}
+
+.empty-state {
+    padding: 30px;
+    text-align: center;
+    color: var(--emma-subtitle);
+}
+
+/* Cursor Wait durante le chiamate (this.Cursor = StandardCursorType.Wait) */
+.busy, .busy * {
+    cursor: progress !important;
+}
+
+.emma-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, .45);
+    border-top-color: #FFFFFF;
+    border-radius: 50%;
+    animation: emma-spin .7s linear infinite;
+}
+
+@keyframes emma-spin {
+    to { transform: rotate(360deg); }
+}
