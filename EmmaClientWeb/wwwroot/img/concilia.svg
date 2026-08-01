@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Conciliazione Bolle Fatture">
+  <!-- Documento di sinistra: bolla / DDT -->
+  <g>
+    <path d="M28 40 h56 l24 24 v112 a8 8 0 0 1 -8 8 H36 a8 8 0 0 1 -8 -8 V48 a8 8 0 0 1 8 -8 z"
+          fill="#FFFFFF" stroke="#1F5C8B" stroke-width="9" stroke-linejoin="round"/>
+    <path d="M84 40 v24 h24" fill="none" stroke="#1F5C8B" stroke-width="9" stroke-linejoin="round"/>
+    <g stroke="#6EC6D9" stroke-width="9" stroke-linecap="round">
+      <line x1="48" y1="96" x2="92" y2="96"/>
+      <line x1="48" y1="118" x2="92" y2="118"/>
+      <line x1="48" y1="140" x2="76" y2="140"/>
+    </g>
+  </g>
+
+  <!-- Documento di destra: fattura -->
+  <g>
+    <path d="M140 40 h56 l24 24 v112 a8 8 0 0 1 -8 8 h-72 a8 8 0 0 1 -8 -8 V48 a8 8 0 0 1 8 -8 z"
+          fill="#FFFFFF" stroke="#1F5C8B" stroke-width="9" stroke-linejoin="round"/>
+    <path d="M196 40 v24 h24" fill="none" stroke="#1F5C8B" stroke-width="9" stroke-linejoin="round"/>
+    <g stroke="#6EC6D9" stroke-width="9" stroke-linecap="round">
+      <line x1="160" y1="96" x2="204" y2="96"/>
+      <line x1="160" y1="118" x2="204" y2="118"/>
+      <line x1="160" y1="140" x2="188" y2="140"/>
+    </g>
+  </g>
+
+  <!-- Frecce di conciliazione tra i due documenti -->
+  <g fill="none" stroke="#1F5C8B" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="104" y1="104" x2="136" y2="104"/>
+    <polyline points="126,94 136,104 126,114"/>
+    <line x1="136" y1="136" x2="104" y2="136"/>
+    <polyline points="114,126 104,136 114,146"/>
+  </g>
+
+  <!-- Spunta di avvenuta conciliazione -->
+  <circle cx="186" cy="186" r="30" fill="#6EC6D9" stroke="#FFFFFF" stroke-width="8"/>
+  <polyline points="172,187 182,197 201,175" fill="none" stroke="#FFFFFF"
+            stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

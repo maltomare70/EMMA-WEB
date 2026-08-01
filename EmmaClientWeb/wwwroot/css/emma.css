@@ -693,3 +693,66 @@ table.emma-grid input.cell-edit[readonly] {
 @keyframes emma-spin {
     to { transform: rotate(360deg); }
 }
+
+/* ---------------- Conciliazione Bolle / Fatture ---------------- */
+
+/* Le due grid identiche affiancate, con scroll indipendente */
+.conc-split {
+    display: flex;
+    gap: 15px;
+    flex: 1 1 auto;
+    min-height: 0;
+    align-items: stretch;
+}
+
+.conc-pane {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+}
+
+.conc-pane-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--emma-panel-bg);
+    border: 1px solid var(--emma-panel-border);
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    font-weight: 700;
+    color: var(--emma-title);
+    flex: 0 0 auto;
+}
+
+.conc-badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--emma-subtitle);
+    background: #FFFFFF;
+    border: 1px solid var(--emma-panel-border);
+    border-radius: 10px;
+    padding: 2px 10px;
+    white-space: nowrap;
+}
+
+/* Etichetta "Sel." sotto la checkbox di selezione totale */
+.conc-th-sub {
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    margin-top: 2px;
+}
+
+table.emma-grid thead th .conc-th-sub {
+    text-align: center;
+}
+
+@media (max-width: 1100px) {
+    .conc-split {
+        flex-direction: column;
+    }
+}
