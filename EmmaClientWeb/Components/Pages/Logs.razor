@@ -68,7 +68,7 @@
 
     protected override void OnInitialized()
     {
-        if (!Session.IsAuthenticated) { Nav.NavigateTo("/"); return; }
+        if (!Session.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
 
         _logService = Factory.Logs();
     }

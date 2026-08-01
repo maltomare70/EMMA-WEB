@@ -47,6 +47,6 @@
 @code {
     protected override void OnInitialized()
     {
-        if (!Session.IsAuthenticated) Nav.NavigateTo("/");
+        if (!Session.IsAuthenticated) Nav.NavigateTo("/login");
     }
 }

@@ -97,7 +97,7 @@
 
     protected override void OnInitialized()
     {
-        if (!Session.IsAuthenticated) { Nav.NavigateTo("/"); return; }
+        if (!Session.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
 
         _articoliService = Factory.Articoli();
         _fornitoriService = Factory.Fornitori();

@@ -41,6 +41,20 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 app.MapStaticAssets();
 
+// Landing page pubblica servita su "/" (file statico wwwroot/landing.html).
+// Il pulsante "Accedi al Client Web" punta a /login (pagina Blazor).
+app.MapGet("/", (IWebHostEnvironment env, HttpContext http) =>
+{
+    http.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+    http.Response.Headers.Pragma = "no-cache";
+    http.Response.Headers.Expires = "0";
+
+    var path = Path.Combine(env.WebRootPath, "landing.html");
+    return File.Exists(path)
+        ? Results.File(path, "text/html; charset=utf-8")
+        : Results.Redirect("/login");
+});
+
 // Endpoint che serve l'allegato PDF al visualizzatore nativo del browser
 app.MapGet("/pdf/{id}", (string id, string? download, PdfCache cache) =>
 {
