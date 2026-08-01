@@ -27,11 +27,18 @@
             --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
             --radius-md: 12px;
             --radius-lg: 16px;
+            --transition: 0.25s ease;
         }
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        section[id] {
+            scroll-margin-top: 96px;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -39,12 +46,18 @@
             color: var(--dark);
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        a:focus-visible,
+        button:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
         }
         /* Container */
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 24px;
+            padding: 0 clamp(16px, 4vw, 24px);
         }
         /* Header / Navbar */
         header {
@@ -54,12 +67,17 @@
             top: 0;
             z-index: 100;
             border-bottom: 1px solid var(--border);
+            transition: box-shadow var(--transition);
         }
+            header.scrolled {
+                box-shadow: var(--shadow-sm);
+            }
         nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
             height: 80px;
+            position: relative;
         }
         .logo {
             font-size: 28px;
@@ -91,6 +109,43 @@
                 .nav-links a:hover {
                     color: var(--primary);
                 }
+        .nav-cta-mobile {
+            display: none;
+        }
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .nav-toggle {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            width: 40px;
+            height: 40px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+        }
+            .nav-toggle span {
+                display: block;
+                width: 100%;
+                height: 2px;
+                background: var(--dark);
+                border-radius: 2px;
+                transition: transform var(--transition), opacity var(--transition);
+            }
+            .nav-toggle.open span:nth-child(1) {
+                transform: translateY(7px) rotate(45deg);
+            }
+            .nav-toggle.open span:nth-child(2) {
+                opacity: 0;
+            }
+            .nav-toggle.open span:nth-child(3) {
+                transform: translateY(-7px) rotate(-45deg);
+            }
         .btn {
             display: inline-block;
             padding: 12px 24px;
@@ -101,6 +156,10 @@
             cursor: pointer;
             border: none;
             text-align: center;
+        }
+        .btn-sm {
+            padding: 10px 18px;
+            font-size: 14px;
         }
         .btn-primary {
             background-color: var(--primary);
@@ -122,7 +181,7 @@
             }
         /* Hero Section */
         .hero {
-            padding: 96px 0 64px;
+            padding: clamp(56px, 12vw, 96px) 0 clamp(40px, 8vw, 64px);
             text-align: center;
             background: radial-gradient(circle at 50% 0%, #EEF2FF 0%, var(--light-bg) 70%);
         }
@@ -139,7 +198,7 @@
             margin-bottom: 24px;
         }
         .hero h1 {
-            font-size: 52px;
+            font-size: clamp(32px, 6vw, 52px);
             font-weight: 800;
             line-height: 1.15;
             letter-spacing: -1px;
@@ -152,18 +211,22 @@
                 color: var(--primary);
             }
         .hero p {
-            font-size: 20px;
+            font-size: clamp(16px, 2.2vw, 20px);
             color: var(--dark-muted);
             max-width: 720px;
             margin: 0 auto 40px;
         }
         .hero-cta {
             display: flex;
+            flex-direction: column;
             justify-content: center;
             gap: 16px;
-            flex-wrap: wrap;
             align-items: center;
         }
+            .hero-cta .btn {
+                width: 100%;
+                max-width: 280px;
+            }
         .download-note {
             display: block;
             font-size: 12px;
@@ -178,7 +241,7 @@
             margin: 0 auto 64px;
         }
             .section-header h2 {
-                font-size: 36px;
+                font-size: clamp(28px, 4vw, 36px);
                 font-weight: 700;
                 letter-spacing: -0.5px;
                 margin-bottom: 16px;
@@ -189,7 +252,7 @@
             }
         /* Flow Section */
         .flow-section {
-            padding: 96px 0;
+            padding: clamp(56px, 10vw, 96px) 0;
             background-color: var(--white);
         }
         .flow-grid {
@@ -204,7 +267,7 @@
             padding: 32px 24px;
             border-radius: var(--radius-lg);
             position: relative;
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
         }
             .flow-card:hover {
                 transform: translateY(-6px);
@@ -233,16 +296,20 @@
             color: var(--dark-muted);
             font-size: 15px;
         }
+        .flow-card:nth-child(2) { transition-delay: 0.06s; }
+        .flow-card:nth-child(3) { transition-delay: 0.12s; }
+        .flow-card:nth-child(4) { transition-delay: 0.18s; }
+        .flow-card:nth-child(5) { transition-delay: 0.24s; }
         /* Key Feature Section - 3 Way Matching */
         .matching-section {
-            padding: 96px 0;
+            padding: clamp(56px, 10vw, 96px) 0;
             background-color: var(--light-bg);
         }
         .matching-card {
             background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
             color: var(--white);
             border-radius: 24px;
-            padding: 64px 48px;
+            padding: clamp(32px, 6vw, 64px) clamp(20px, 5vw, 48px);
             box-shadow: var(--shadow-lg);
         }
         .matching-content {
@@ -252,7 +319,7 @@
             align-items: center;
         }
         .matching-text h2 {
-            font-size: 36px;
+            font-size: clamp(26px, 4vw, 36px);
             font-weight: 700;
             margin-bottom: 20px;
             line-height: 1.2;
@@ -275,7 +342,12 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 16px 20px;
             border-radius: var(--radius-md);
+            transition: background 0.2s ease, border-color 0.2s ease;
         }
+            .pillar-item:hover {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(255, 255, 255, 0.2);
+            }
         .pillar-icon {
             width: 40px;
             height: 40px;
@@ -313,7 +385,11 @@
             margin-bottom: 16px;
             border: 1px solid rgba(255, 255, 255, 0.05);
             text-align: left;
+            transition: transform 0.2s ease;
         }
+            .visual-box:hover {
+                transform: translateX(4px);
+            }
         .visual-box-header {
             display: flex;
             justify-content: space-between;
@@ -329,21 +405,21 @@
         }
         /* SDK Section */
         .sdk-section {
-            padding: 96px 0;
+            padding: clamp(56px, 10vw, 96px) 0;
             background-color: var(--white);
         }
         .sdk-card {
             background: var(--light-bg);
             border: 1px solid var(--border);
             border-radius: 24px;
-            padding: 64px 48px;
+            padding: clamp(32px, 6vw, 64px) clamp(20px, 5vw, 48px);
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 48px;
+            gap: clamp(24px, 4vw, 48px);
             align-items: center;
         }
         .sdk-text h2 {
-            font-size: 36px;
+            font-size: clamp(26px, 4vw, 36px);
             font-weight: 700;
             margin-bottom: 20px;
             line-height: 1.2;
@@ -372,7 +448,7 @@
             }
         /* Benefits Section */
         .benefits-section {
-            padding: 96px 0;
+            padding: clamp(56px, 10vw, 96px) 0;
             background-color: var(--light-bg);
         }
         .benefits-grid {
@@ -385,9 +461,10 @@
             border-radius: var(--radius-lg);
             border: 1px solid var(--border);
             background-color: var(--white);
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
         }
             .benefit-card:hover {
+                transform: translateY(-4px);
                 box-shadow: var(--shadow-lg);
                 border-color: var(--primary);
             }
@@ -411,6 +488,10 @@
             color: var(--dark-muted);
             font-size: 16px;
         }
+        .benefit-card:nth-child(2) { transition-delay: 0.06s; }
+        .benefit-card:nth-child(3) { transition-delay: 0.12s; }
+        .benefit-card:nth-child(4) { transition-delay: 0.18s; }
+        .benefit-card:nth-child(5) { transition-delay: 0.24s; }
         /* Footer */
         footer {
             background-color: var(--dark);
@@ -438,35 +519,118 @@
             color: #64748B;
             font-size: 14px;
         }
+        /* Scroll reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+            .reveal.is-visible {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        @media (prefers-reduced-motion: reduce) {
+            html {
+                scroll-behavior: auto;
+            }
+            .reveal {
+                opacity: 1;
+                transform: none;
+                transition: none;
+            }
+            .flow-card, .benefit-card, .btn, .visual-box {
+                transition: none;
+            }
+        }
         /* Responsive */
         @media (max-width: 900px) {
-            .hero h1 {
-                font-size: 38px;
-            }
             .matching-content, .sdk-card {
                 grid-template-columns: 1fr;
             }
             .nav-links {
+                position: fixed;
+                top: 80px;
+                left: 0;
+                right: 0;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 4px;
+                background-color: var(--white);
+                border-bottom: 1px solid var(--border);
+                box-shadow: var(--shadow-md);
+                padding: 16px clamp(16px, 4vw, 24px) 24px;
+                transform: translateY(-12px);
+                opacity: 0;
+                pointer-events: none;
+                transition: transform var(--transition), opacity var(--transition);
+            }
+                .nav-links.open {
+                    transform: translateY(0);
+                    opacity: 1;
+                    pointer-events: auto;
+                }
+                .nav-links li {
+                    width: 100%;
+                }
+                .nav-links a {
+                    display: block;
+                    padding: 10px 4px;
+                    font-size: 16px;
+                }
+            .nav-cta-desktop {
                 display: none;
             }
+            .nav-cta-mobile {
+                display: block;
+                margin-top: 8px;
+                padding-top: 8px;
+                border-top: 1px solid var(--border);
+            }
+                .nav-cta-mobile .btn {
+                    width: 100%;
+                }
+            .nav-toggle {
+                display: flex;
+            }
+        }
+        @media (max-width: 600px) {
+            .matching-card, .sdk-card {
+                border-radius: 16px;
+            }
+            .flow-grid, .benefits-grid {
+                gap: 20px;
+            }
+            .footer-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+                .footer-content .btn {
+                    width: 100%;
+                }
         }
     </style>
 </head>
 <body>
     <!-- Header / Navbar -->
-    <header>
+    <header id="siteHeader">
         <div class="container">
             <nav>
                 <a href="/" class="logo">
                     <span>EMMA</span>
                 </a>
-                <ul class="nav-links">
+                <ul class="nav-links" id="navLinks">
                     <li><a href="#come-funziona">Come Funziona</a></li>
                     <li><a href="#conciliazione">3-Way Matching</a></li>
                     <li><a href="#sdk">SDK e Connettori</a></li>
                     <li><a href="#vantaggi">Perché EMMA</a></li>
+                    <li class="nav-cta-mobile"><a href="/login" class="btn btn-primary">Accedi al Client Web</a></li>
                 </ul>
-                <a href="mailto:emma@gmail.com?subject=Richiesta%20Credenziali%20EMMA&body=Buongiorno,%0A%0AVorrei%20richiedere%20le%20credenziali%20di%20accesso.%0A%0A---%20DATI%20RICHIEDENTE%20---%0ANome%20e%20Cognome:%20%0ARagione%20Sociale:%20%0AEmail:%20%0ATelefono:%20%0AReferente/Contatto:%20%0A%0AGrazie,%0ACordiali%20saluti." class="btn btn-primary">Richiedi Credenziali</a>
+                <div class="nav-actions">
+                    <a href="/login" class="btn btn-primary btn-sm nav-cta-desktop">Accedi</a>
+                    <button class="nav-toggle" id="navToggle" type="button" aria-label="Apri menu" aria-expanded="false" aria-controls="navLinks">
+                        <span></span><span></span><span></span>
+                    </button>
+                </div>
             </nav>
         </div>
     </header>
@@ -479,46 +643,46 @@
             <h1>Trasforma i documenti statici in <span>informazioni dinamiche</span></h1>
             <p>Alimenta l'ecosistema digitale della tua azienda, elimina l'inserimento manuale dei dati, accelera i processi di verifica e ottimizza i flussi operativi.</p>
             <div class="hero-cta">
-                <a href="/login" class="btn btn-primary">
-                    🌐 Accedi al Client Web
-                </a>
+
+                <a href="mailto:emma.documentale@gmail.com?subject=Richiesta%20Credenziali%20EMMA&body=Buongiorno,%0A%0AVorrei%20richiedere%20le%20credenziali%20di%20accesso.%0A%0A---%20DATI%20RICHIEDENTE%20---%0ANome%20e%20Cognome:%20%0ARagione%20Sociale:%20%0AEmail:%20%0ATelefono:%20%0AReferente/Contatto:%20%0A%0AGrazie,%0ACordiali%20saluti." 
+                   class="btn btn-primary">Richiedi Credenziali</a>
             </div>
         </div>
     </section>
     <!-- Flow Section (Come Funziona) -->
     <section id="come-funziona" class="flow-section">
         <div class="container">
-            <div class="section-header">
+            <div class="section-header reveal">
                 <h2>Come Funziona</h2>
                 <p>Un flusso di dati fluido e automatizzato dall'acquisizione fino all'integrazione nei tuoi gestionali.</p>
             </div>
             <div class="flow-grid">
                 <!-- Step 1 -->
-                <div class="flow-card">
+                <div class="flow-card reveal">
                     <div class="step-number">1</div>
                     <h3>Acquisizione Intelligente</h3>
                     <p>La piattaforma acquisisce documenti da molteplici fonti: email, cartelle condivise e upload manuali, fatture elettroniche, con controlli automatici ogni 10 minuti, assicurando un flusso costante di informazioni senza necessità di attività manuali ripetitive.</p>
                 </div>
                 <!-- Step 2 -->
-                <div class="flow-card">
+                <div class="flow-card reveal">
                     <div class="step-number">2</div>
                     <h3>Analisi Semantica con AI</h3>
                     <p>Supera i limiti dei tradizionali sistemi OCR basati su template. L'Intelligenza Artificiale analizza i documenti, ne comprende il contenuto ed estrae automaticamente dati chiave come tabelle, quantità e anagrafiche.</p>
                 </div>
                 <!-- Step 3 -->
-                <div class="flow-card">
+                <div class="flow-card reveal">
                     <div class="step-number">3</div>
                     <h3>Database Proprietario e Sicuro</h3>
                     <p>Utilizza un database proprietario progettato per garantire la massima sicurezza delle informazioni. I dati sono conservati esclusivamente per il tempo necessario alla conciliazione e successivamente eliminati nel pieno rispetto del Regolamento GDPR.</p>
                 </div>
                 <!-- Step 4 -->
-                <div class="flow-card">
+                <div class="flow-card reveal">
                     <div class="step-number">4</div>
                     <h3>Integrazione Dinamica</h3>
                     <p>Grazie ad API avanzate e connettori nativi, la piattaforma si integra in modo fluido con CRM ed ERP esistenti, garantendo una sincronizzazione in tempo reale e assicurando che nessun dato rimanga isolato o inutilizzato.</p>
                 </div>
                 <!-- Step 5 -->
-                <div class="flow-card">
+                <div class="flow-card reveal">
                     <div class="step-number">5</div>
                     <h3>Estensibilità Personalizzata</h3>
                     <p>La piattaforma evolve insieme al tuo business. Grazie a un SDK completo e a un'architettura aperta, i team di sviluppo possono creare integrazioni, automazioni e funzionalità personalizzate in modo rapido e sicuro.</p>
@@ -529,7 +693,7 @@
     <!-- Key Feature: Conciliazione (3-Way Matching) -->
     <section id="conciliazione" class="matching-section">
         <div class="container">
-            <div class="matching-card">
+            <div class="matching-card reveal">
                 <div class="matching-content">
                     <div class="matching-text">
                         <h2>Conciliazione Ordini, Bolle e Fatture</h2>
@@ -582,7 +746,7 @@
     <!-- SDK Section -->
     <section id="sdk" class="sdk-section">
         <div class="container">
-            <div class="sdk-card">
+            <div class="sdk-card reveal">
                 <div class="sdk-text">
                     <h2>SDK Dedicato e Interamente Documentato</h2>
                     <p>EMMA si adatta al tuo ecosistema IT. Grazie a un SDK completo, guide tecniche dettagliate ed esempi pronti all'uso, il tuo team può creare e ampliare integrazioni personalizzate con gestionali, applicazioni e sistemi proprietari, mantenendo il pieno controllo dello sviluppo.</p>
@@ -604,37 +768,37 @@
     <!-- Benefits Section (Perché Scegliere EMMA) -->
     <section id="vantaggi" class="benefits-section">
         <div class="container">
-            <div class="section-header">
+            <div class="section-header reveal">
                 <h2>Perché Scegliere EMMA?</h2>
                 <p>I principali vantaggi per ottimizzare la gestione documentale della tua azienda.</p>
             </div>
             <div class="benefits-grid">
                 <!-- Benefit 1 -->
-                <div class="benefit-card">
+                <div class="benefit-card reveal">
                     <div class="benefit-icon">🎯</div>
                     <h3>Zero Errori Umani</h3>
                     <p>Elimina definitivamente le sviste e gli errori di battitura tipici del data-entry manuale.</p>
                 </div>
                 <!-- Benefit 2 -->
-                <div class="benefit-card">
+                <div class="benefit-card reveal">
                     <div class="benefit-icon">⚡</div>
                     <h3>Massima Efficienza</h3>
                     <p>Riduci drasticamente i tempi di gestione del ciclo passivo, liberando risorse preziose.</p>
                 </div>
                 <!-- Benefit 3 -->
-                <div class="benefit-card">
+                <div class="benefit-card reveal">
                     <div class="benefit-icon">🔗</div>
                     <h3>Ecosistema Connesso</h3>
                     <p>Fa comunicare i documenti direttamente con i software gestionali (ERP e CRM) già in uso.</p>
                 </div>
                 <!-- Benefit 4 -->
-                <div class="benefit-card">
+                <div class="benefit-card reveal">
                     <div class="benefit-icon">🛠️</div>
                     <h3>SDK & Personalizzazione</h3>
                     <p>Crea connettori custom in modo semplice e veloce con il pratico SDK.</p>
                 </div>
                 <!-- Benefit 5 -->
-                <div class="benefit-card">
+                <div class="benefit-card reveal">
                     <div class="benefit-icon">🖥️</div>
                     <h3>Installazione On-Premises</h3>
                     <p>Mantieni il totale controllo: distribuisci il server di EMMA direttamente sui tuoi Data Center.</p>
@@ -659,5 +823,48 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        (function () {
+            var header = document.getElementById('siteHeader');
+            var navToggle = document.getElementById('navToggle');
+            var navLinks = document.getElementById('navLinks');
+
+            // Ombra dell'header allo scroll
+            window.addEventListener('scroll', function () {
+                header.classList.toggle('scrolled', window.scrollY > 8);
+            }, { passive: true });
+
+            // Menu mobile ad hamburger
+            navToggle.addEventListener('click', function () {
+                var isOpen = navLinks.classList.toggle('open');
+                navToggle.classList.toggle('open', isOpen);
+                navToggle.setAttribute('aria-expanded', isOpen);
+            });
+            navLinks.querySelectorAll('a').forEach(function (link) {
+                link.addEventListener('click', function () {
+                    navLinks.classList.remove('open');
+                    navToggle.classList.remove('open');
+                    navToggle.setAttribute('aria-expanded', 'false');
+                });
+            });
+
+            // Animazioni di comparsa allo scroll
+            var revealEls = document.querySelectorAll('.reveal');
+            if ('IntersectionObserver' in window && revealEls.length) {
+                var io = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (entry) {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('is-visible');
+                            io.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.15 });
+                revealEls.forEach(function (el) { io.observe(el); });
+            } else {
+                revealEls.forEach(function (el) { el.classList.add('is-visible'); });
+            }
+        })();
+    </script>
 </body>
 </html>
