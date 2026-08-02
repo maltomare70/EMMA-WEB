@@ -30,7 +30,7 @@ Questo manuale descrive, schermata per schermata, tutte le funzionalità disponi
 
 ## 2. Accesso al sistema
 
-> **[IMMAGINE: Schermata di Login]**
+![Finestra di accesso al Client Web](login.png)
 
 All'apertura del Client Web viene mostrata la finestra di accesso.
 
@@ -64,7 +64,7 @@ Alcuni elementi dell'interfaccia sono condivisi da più schermate e vengono desc
 
 ### 3.1 Barra superiore
 
-> **[IMMAGINE: Barra superiore con titolo pagina, utente e pulsante Esci]**
+![Barra superiore con nome utente e pulsante Esci](menu_utente.png)
 
 In ogni schermata successiva al login è presente una barra superiore che contiene:
 
@@ -75,7 +75,6 @@ In ogni schermata successiva al login è presente una barra superiore che contie
 
 ### 3.2 Finestre di conferma e di messaggio
 
-> **[IMMAGINE: Finestra di conferma azione]**
 
 Molte operazioni (eliminazioni, salvataggi, cambi di stato) richiedono una conferma prima di essere eseguite. Compare una finestra con il messaggio dell'operazione e due pulsanti:
 
@@ -84,13 +83,12 @@ Molte operazioni (eliminazioni, salvataggi, cambi di stato) richiedono una confe
 
 > ⚠️ Nota: nella finestra di conferma il pulsante **Sì** è colorato di rosso e il pulsante **No** di verde. Si consiglia di leggere sempre il testo del pulsante prima di cliccare, senza affidarsi al colore.
 
-> **[IMMAGINE: Finestra di informazione/errore]**
 
 Per messaggi informativi ("Informazione") o di errore ("Errore") compare invece una finestra con il solo pulsante **OK** per chiuderla.
 
 ### 3.3 Visualizzatore PDF
 
-> **[IMMAGINE: Finestra di anteprima PDF]**
+![Anteprima di un allegato PDF](pdf.png)
 
 Quando si apre l'allegato PDF di un documento, viene mostrata una finestra con:
 
@@ -103,7 +101,7 @@ Quando si apre l'allegato PDF di un documento, viene mostrata una finestra con:
 
 ## 4. Dashboard
 
-> **[IMMAGINE: Dashboard con i sei moduli]**
+![Dashboard con i riquadri delle funzionalità](menu.png)
 
 La Dashboard è la schermata principale che compare subito dopo l'accesso. Mostra una griglia di riquadri, ciascuno dei quali apre una delle funzionalità della piattaforma:
 
@@ -122,7 +120,7 @@ La Dashboard è la schermata principale che compare subito dopo l'accesso. Mostr
 
 ## 5. Carica Documenti
 
-> **[IMMAGINE: Schermata Carica Documenti con toolbar e griglia articoli]**
+![Schermata Carica Documenti](carica_documento.png)
 
 Questa schermata permette di caricare un nuovo documento (PDF o XML) e di farne estrarre automaticamente i dati dal sistema.
 
@@ -168,7 +166,7 @@ Ogni cella della griglia è modificabile direttamente facendo clic su di essa. P
 
 ## 6. Visualizza Documenti
 
-> **[IMMAGINE: Schermata Visualizza Documenti con filtri e griglia]**
+![Schermata Visualizza Documenti](visualizza_documenti.png)
 
 Questa è la schermata principale per la consultazione, la verifica e la riconciliazione (3-Way Matching) dei documenti già acquisiti dal sistema.
 
@@ -225,7 +223,7 @@ Se il documento non ha righe di dettaglio, viene mostrato il messaggio *"Nessuna
 
 ## 7. Fornitori
 
-> **[IMMAGINE: Schermata Fornitori]**
+![Anagrafica Fornitori](fornitori.png)
 
 Questa schermata gestisce l'anagrafica dei fornitori.
 
@@ -254,7 +252,7 @@ Facendo clic su una riga la si seleziona (necessario per il pulsante **Elimina S
 
 ## 8. Articoli Fornitore
 
-> **[IMMAGINE: Schermata Articoli Fornitore]**
+![Anagrafica Articoli Fornitore](articoli.png)
 
 Questa schermata gestisce l'anagrafica degli articoli, organizzata per fornitore.
 
@@ -286,7 +284,7 @@ Come nella schermata Fornitori, le righe nuove o modificate vengono evidenziate 
 
 ## 9. Log
 
-> **[IMMAGINE: Schermata Log]**
+![Storico delle elaborazioni (Log)](log.png)
 
 Questa schermata mostra lo storico delle elaborazioni AI effettuate dal sistema, utile per monitorare l'attività e i consumi.
 
@@ -315,7 +313,7 @@ Questa tabella è di sola consultazione: non è possibile modificarne i dati. Se
 
 ## 10. Cambio Password
 
-> **[IMMAGINE: Schermata Cambio Password]**
+![Schermata Cambio Password](cambio_password.png)
 
 Questa schermata permette di modificare la propria password di accesso.
 
@@ -350,5 +348,3 @@ Dal successivo accesso sarà necessario utilizzare la nuova password.
 Per terminare la sessione di lavoro è sufficiente premere il pulsante **Esci** presente nella barra superiore (vedi [§3.1](#31-barra-superiore)). L'utente viene disconnesso e riportato alla schermata di Login.
 
 ---
-
-*Manuale generato per EMMA Client Web. Le immagini indicate come segnaposto devono essere sostituite con gli screenshot reali dell'applicazione prima della distribuzione al cliente finale.*

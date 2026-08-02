@@ -17,6 +17,16 @@
             }
             <span class="emma-window-title">@Title</span>
             <span class="emma-spacer"></span>
+            <button class="emma-iconbtn" type="button" title="Manuale utente"
+                    aria-label="Apri il manuale utente" @onclick="ApriManuale">
+                @* Icona "libro aperto": inline invece che come file, così segue il
+                   colore del testo e non aggiunge una richiesta HTTP. *@
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                    <path d="M12 6.5C10.6 5.2 8.7 4.5 6.5 4.5H3v13h3.5c2.2 0 4.1.7 5.5 2 1.4-1.3 3.3-2 5.5-2H21v-13h-3.5c-2.2 0-4.1.7-5.5 2z" />
+                    <path d="M12 6.5v13" />
+                </svg>
+            </button>
             @if (Session.IsAuthenticated)
             {
                 <span class="emma-user">@Session.User</span>
@@ -30,7 +40,29 @@
     </div>
 </div>
 
+@* Manuale utente: stessa finestra modale usata per gli allegati PDF, ma il file
+   è statico e servito da wwwroot, quindi non passa dalla PdfCache. *@
+@if (_manualeAperto)
+{
+    <div class="pdf-overlay" @onclick="ChiudiManuale">
+        <div class="pdf-window" @onclick:stopPropagation="true">
+            <div class="pdf-header">
+                <span class="title">Manuale Utente – EMMA Client Web</span>
+                <a class="btn btn-blue btn-sm" href="@ManualeUrl" download>💾 Scarica</a>
+                <a class="btn btn-blue btn-sm" href="@ManualeUrl" target="_blank">↗ Nuova scheda</a>
+                <button class="btn btn-grey btn-sm" @onclick="ChiudiManuale">❌ Chiudi</button>
+            </div>
+            <iframe src="@($"{ManualeUrl}#toolbar=1")" title="Manuale Utente – EMMA Client Web"></iframe>
+        </div>
+    </div>
+}
+
 @code {
+    // File statico sotto wwwroot: rigenerandolo da Manuale/*.md va sovrascritto qui.
+    private const string ManualeUrl = "manuale/Manuale_Utente_EMMA.pdf";
+
+    private bool _manualeAperto;
+
     private string Path => Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0].TrimEnd('/').ToLowerInvariant();
 
     // Titolo della "Window" corrente, come i Title delle Window Avalonia
@@ -67,8 +99,13 @@
         Nav.LocationChanged -= OnLocationChanged;
     }
 
+    private void ApriManuale() => _manualeAperto = true;
+
+    private void ChiudiManuale() => _manualeAperto = false;
+
     private void Esci()
     {
+        _manualeAperto = false;
         Session.SignOut();
         Nav.NavigateTo("/login");
     }

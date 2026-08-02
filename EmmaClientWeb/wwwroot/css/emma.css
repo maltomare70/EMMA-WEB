@@ -71,6 +71,33 @@ html, body {
     flex: 1 1 auto;
 }
 
+/* Icona di apertura del manuale utente: pulsante piatto, solo il glifo */
+.emma-titlebar .emma-iconbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--emma-subtitle);
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+}
+
+.emma-titlebar .emma-iconbtn:hover {
+    background: #F0F4F8;
+    border-color: var(--emma-card-border);
+    color: var(--emma-title);
+}
+
+.emma-titlebar .emma-iconbtn svg {
+    width: 19px;
+    height: 19px;
+}
+
 .emma-titlebar .emma-user {
     font-size: 13px;
     color: var(--emma-subtitle);

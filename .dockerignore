@@ -76,9 +76,13 @@ compose*.yaml
 **/*.pdb
 
 # --- Documentazione e roba non necessaria alla compilazione -------------------
-# NB: **/*.md esclude anche Manuale/ (verificato: nessun codice lo legge a
-# runtime). Se un giorno il manuale dovesse essere servito dall'app, spostarlo
-# sotto wwwroot/ e aggiungere qui una riga "!EmmaClientWeb/wwwroot/**".
+# NB: Manuale/ contiene i SORGENTI del manuale (.md + screenshot): non servono
+# alla build e rigenerarli invaliderebbe la cache di "COPY . EMMA-WEB/".
+# Il PDF servito dall'applicazione è invece la copia in
+# EmmaClientWeb/wwwroot/manuale/, che DEVE entrare nel contesto: il pattern qui
+# sotto vale solo per la cartella "Manuale" in radice (Docker non applica i
+# pattern in modo ricorsivo ed è case-sensitive), quindi non la tocca.
+Manuale
 LICENSE
 docs
 **/*.md
