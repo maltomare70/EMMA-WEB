@@ -137,7 +137,7 @@
                                        checked="@(Fatture.Count > 0 && _fattureSelezionate == Fatture.Count)"
                                        @onchange="e => SelezionaTutto(Fatture, e.Value is true)"
                                        disabled="@(_busy || Fatture.Count == 0)" />
-                                <div class="conc-th-sub">Sel.</div>
+                                <div class="conc-th-sub"></div>
                             </th>
                             <th style="min-width:150px">Fornitore</th>
                             <th style="width:130px">Numero Documento</th>
@@ -195,26 +195,7 @@
     private const int NoteDiAccredito = 5; //non gestite
 
     /// <summary>Riga "piatta" mostrata nelle grid: dati di testata + riga articolo.</summary>
-    public class RigaConciliazione
-    {
-        public bool Selezionato { get; set; }
 
-        public string? IdMaster { get; set; }
-        public string? IdRiga { get; set; }
-
-        public string? Fornitore { get; set; }
-        public string? NumeroDocumento { get; set; }
-        public string? DataDocumento { get; set; }
-        public string? TipoDocumento { get; set; }
-
-        public string? CodiceArticolo { get; set; }
-        public string? DescrizioneArticolo { get; set; }
-        public string? UnitaMisura { get; set; }
-        public double Qta { get; set; }
-
-        /// <summary>Data documento convertita, quando interpretabile.</summary>
-        public DateTime? Data { get; set; }
-    }
 
     private List<RigaConciliazione> Bolle { get; set; } = new();
     private List<RigaConciliazione> Fatture { get; set; } = new();
@@ -232,6 +213,7 @@
 
     private IDocService _docService = default!;
     private IFornitoriService _fornitoriService = default!;
+    private IConciliazioneClientService _conciliazioneService = default!;
 
     protected override void OnInitialized()
     {
@@ -239,6 +221,7 @@
 
         _docService = Factory.Docs();
         _fornitoriService = Factory.Fornitori();
+        _conciliazioneService = Factory.Conciliazione();
     }
 
     /// <summary>Come in VisDocs: i fornitori si caricano dopo il primo render.</summary>
@@ -404,7 +387,7 @@
     }
 
 
-    private async Task ProponiConciliazione_Click()
+    private async Task Concilia_Click()
     {
         if (Bolle.Count == 0 || Fatture.Count == 0)
         {
@@ -415,8 +398,10 @@
         {
             _busy = true;
 
-            Thread.Sleep(5000); // Simula un'elaborazione lunga
-            await _dialogs.MostraMessaggioAsync("Informazione", "Proposta di Conciliazione terminata. Controllare i dati prima di confermare.");
+            // Step 3: Salva le conciliazioni
+            //await SalvaConciliazioni(matching);
+
+            await _dialogs.MostraMessaggioAsync("Informazione", "Salvataggio conciliazioni terminato.");
         }
         catch (Exception ex)
         {
@@ -426,22 +411,21 @@
         {
             _busy = false;
         }
-        
+
     }
 
     // ---------------- Conciliazione ----------------
 
     /// <summary>
-    /// Pulsante "Concilia".
-    /// TODO: la logica di conciliazione va implementata qui.
-    /// Dati di partenza:
-    ///   righeBolle   = righe spuntate nella grid di sinistra (DDT)
-    ///   righeFatture = righe spuntate nella grid di destra (Fatture)
+    /// Pulsante "Concilia": match esatto in .NET + fuzzy via Python su non-matching.
     /// </summary>
-    private async Task Concilia_Click()
+    private async Task ProponiConciliazione_Click()
     {
-        var righeBolle = Bolle.Where(r => r.Selezionato).ToList();
-        var righeFatture = Fatture.Where(r => r.Selezionato).ToList();
+        // var righeBolle = Bolle.Where(r => r.Selezionato).ToList();
+        // var righeFatture = Fatture.Where(r => r.Selezionato).ToList();
+
+        var righeBolle = Bolle.ToList();
+        var righeFatture = Fatture.ToList();
 
         if (righeBolle.Count == 0 || righeFatture.Count == 0)
         {
@@ -456,11 +440,9 @@
         {
             _busy = true;
 
-            // ============================================================
-            // TODO: logica di conciliazione da implementare.
-            // ============================================================
+            var ret = await _conciliazioneService.GetConciliazione(righeBolle, righeFatture);
 
-            await _dialogs.InfoAsync("Logica di conciliazione non ancora implementata.");
+            await _dialogs.InfoAsync($"✓ Conciliato: {ret.bolle.Count} bolle e {ret.fatture.Count} fatture");
         }
         catch (Exception ex)
         {
@@ -469,6 +451,31 @@
         finally
         {
             _busy = false;
+        }
+    }
+
+
+    /// <summary>Salva le conciliazioni via API (POST /api/v1/conciliazione).</summary>
+    private async Task SalvaConciliazioni(List<(RigaConciliazione Bolla, RigaConciliazione Fattura)> matching)
+    {
+        // TODO: implementare endpoint POST /api/v1/conciliazione sul server
+        // per ogni (bolla, fattura) in matching, salvare il record di conciliazione.
+        // Per ora, simuliamo il salvataggio.
+
+        // var righeBolle = Bolle.Where(r => r.Selezionato).ToList();
+        // var righeFatture = Fatture.Where(r => r.Selezionato).ToList();
+
+        foreach (var (bolla, fattura) in matching)
+        {
+            // Esempio di payload da inviare:
+            // var conciliazione = new
+            // {
+            //     IdRigaBolla = bolla.IdRiga,
+            //     IdRigaFattura = fattura.IdRiga,
+            //     DataConciliazione = DateTime.UtcNow,
+            //     Utente = Session.User
+            // };
+            // await _docService.SalvaConciliazione(conciliazione);
         }
     }
 }

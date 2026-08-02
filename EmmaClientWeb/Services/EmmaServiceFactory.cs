@@ -34,6 +34,9 @@ public class EmmaServiceFactory
     public IDocService Docs()
         => new DocService(ServerUrl, _session.User, _session.Password);
 
+    public IConciliazioneClientService Conciliazione()
+        => new ConciliazionClientService(ServerUrl, _session.User, _session.Password);
+
     public LogService Logs()
         => new LogService(ServerUrl, _session.User, _session.Password);
 
