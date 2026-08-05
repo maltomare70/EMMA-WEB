@@ -440,9 +440,24 @@
         {
             _busy = true;
 
-            var ret = await _conciliazioneService.GetConciliazione(righeBolle, righeFatture);
+            List<ConciliazioneResponse> ret = await _conciliazioneService.GetConciliazione(righeBolle, righeFatture);
 
-            await _dialogs.InfoAsync($"✓ Conciliato: {ret.bolle.Count} bolle e {ret.fatture.Count} fatture");
+            var s = $"✓ Conciliato:";
+            ret.ForEach(x =>
+            {
+                string fornitore = x.Document.Fornitore;
+                var b = x.Document.BolleNonConciliate.Count();
+                var f = x.Document.FattureNonConciliate.Count();
+                var c = x.Document.Conciliazioni.Count();
+                s += $"\n\n" +
+                     $"Fornitore: {fornitore}\n" +
+                     $"Bolle non conciliate: {b}\n" +
+                     $"Fatture non conciliate: {f}\n" +
+                     $"Conciliazioni proposte: {c}";    
+            });
+            
+
+            await _dialogs.InfoAsync(s);
         }
         catch (Exception ex)
         {
