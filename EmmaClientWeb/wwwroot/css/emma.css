@@ -825,7 +825,25 @@ table.emma-grid tbody tr.group-row .expander {
     color: var(--emma-subtitle);
 }
 
-table.emma-grid tbody tr.child-row td.cell-child {
+/* Secondo livello: numero documento (bolla / fattura) */
+table.emma-grid tbody tr.doc-row td {
+    background: #F4F8FC;
+    font-weight: 600;
+    color: var(--emma-label);
+    cursor: pointer;
+    user-select: none;
+}
+
+table.emma-grid tbody tr.doc-row:hover td {
+    background: #EAF2FA;
+}
+
+table.emma-grid tbody tr.doc-row .expander {
+    font-size: 10px;
+    width: 16px;
+}
+
+table.emma-grid tbody td.cell-child {
     border-right: none;
 }
 
