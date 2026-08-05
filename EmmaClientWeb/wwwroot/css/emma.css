@@ -766,6 +766,69 @@ table.emma-grid input.cell-edit[readonly] {
     white-space: nowrap;
 }
 
+.conc-title-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-mini {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--emma-subtitle);
+    background: #FFFFFF;
+    border: 1px solid var(--emma-panel-border);
+    border-radius: 10px;
+    padding: 2px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-mini:hover:not(:disabled) {
+    background: #F0F6FC;
+    border-color: var(--emma-blue);
+}
+
+.btn-mini:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+/* ---- Righe di raggruppamento per fornitore (drilldown) ---- */
+
+table.emma-grid tbody tr.group-row td {
+    background: #E7EFF8;
+    font-weight: 700;
+    color: var(--emma-title);
+    border-top: 1px solid #B8CEE4;
+    cursor: pointer;
+    user-select: none;
+}
+
+table.emma-grid tbody tr.group-row:hover td {
+    background: #DBE8F5;
+}
+
+table.emma-grid tbody tr.group-row .expander {
+    font-size: 10px;
+    width: 16px;
+}
+
+.group-title {
+    margin-left: 2px;
+}
+
+.group-count {
+    margin-left: 12px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--emma-subtitle);
+}
+
+table.emma-grid tbody tr.child-row td.cell-child {
+    border-right: none;
+}
+
 /* Etichetta "Sel." sotto la checkbox di selezione totale */
 .conc-th-sub {
     font-size: 11px;

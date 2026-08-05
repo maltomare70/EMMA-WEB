@@ -65,7 +65,14 @@
         <div class="conc-pane">
             <div class="conc-pane-title">
                 <span>Bolle / DDT</span>
-                <span class="conc-badge">@_bolleSelezionate / @Bolle.Count selezionate</span>
+                <span class="conc-title-right">
+                    <button class="btn-mini" type="button"
+                            @onclick="() => ToggleTuttiGruppi(_bolleAperte, Bolle)"
+                            disabled="@(_busy || Bolle.Count == 0)">
+                        @(TuttiAperti(_bolleAperte, Bolle) ? "Comprimi tutto" : "Espandi tutto")
+                    </button>
+                    <span class="conc-badge">@_bolleSelezionate / @Bolle.Count selezionate</span>
+                </span>
             </div>
 
             <div class="emma-grid-wrapper">
@@ -98,22 +105,48 @@
                         }
                         else
                         {
-                            @foreach (var riga in Bolle)
+                            @foreach (var gruppo in Raggruppa(Bolle))
                             {
-                                var r = riga;
-                                <tr @key="r" class="@(r.Selezionato ? "selected" : "")">
+                                var g = gruppo;
+                                var aperto = _bolleAperte.Contains(g.Key);
+                                var totali = g.Count();
+                                var selezionate = g.Count(x => x.Selezionato);
+
+                                <tr @key="@("g-" + g.Key)" class="group-row @(aperto ? "open" : "")">
                                     <td class="cell-center">
-                                        <input type="checkbox" checked="@r.Selezionato"
-                                               @onchange="e => CambiaSelezione(r, e.Value is true)"
+                                        <input type="checkbox"
+                                               checked="@(selezionate == totali)"
+                                               @onchange="e => SelezionaGruppo(g, e.Value is true)"
                                                disabled="@_busy" />
                                     </td>
-                                    <td>@r.Fornitore</td>
-                                    <td>@r.NumeroDocumento</td>
-                                    <td>@r.DataDocumento</td>
-                                    <td>@r.CodiceArticolo</td>
-                                    <td>@r.DescrizioneArticolo</td>
-                                    <td class="cell-right">@(Qta(r.Qta))</td>
+                                    <td colspan="5" @onclick="() => ToggleGruppo(_bolleAperte, g.Key)">
+                                        <span class="expander">@(aperto ? "▼" : "►")</span>
+                                        <span class="group-title">@NomeGruppo(g.Key)</span>
+                                        <span class="group-count">@totali righe · @selezionate selezionate</span>
+                                    </td>
+                                    <td class="cell-right">@(Qta(g.Sum(x => x.Qta)))</td>
                                 </tr>
+
+                                if (aperto)
+                                {
+                                    foreach (var riga in g)
+                                    {
+                                        var r = riga;
+                                        <tr @key="r" class="child-row @(r.Selezionato ? "selected" : "")">
+                                            <td class="cell-center">
+                                                <input type="checkbox" checked="@r.Selezionato"
+                                                       @onchange="e => CambiaSelezione(r, e.Value is true)"
+                                                       disabled="@_busy" />
+                                            </td>
+                                            <td class="cell-child"></td>
+                                            <td>@r.NumeroDocumento</td>
+                                            <td>@r.DataDocumento</td>
+                                            <td>@r.CodiceArticolo</td>
+                                            <td>@r.DescrizioneArticolo</td>
+                                            <td class="cell-right">@(Qta(r.Qta))</td>
+                                        </tr>
+                                    }
+                                }
                             }
                         }
                     </tbody>
@@ -125,7 +158,14 @@
         <div class="conc-pane">
             <div class="conc-pane-title">
                 <span>Fatture</span>
-                <span class="conc-badge">@_fattureSelezionate / @Fatture.Count selezionate</span>
+                <span class="conc-title-right">
+                    <button class="btn-mini" type="button"
+                            @onclick="() => ToggleTuttiGruppi(_fattureAperte, Fatture)"
+                            disabled="@(_busy || Fatture.Count == 0)">
+                        @(TuttiAperti(_fattureAperte, Fatture) ? "Comprimi tutto" : "Espandi tutto")
+                    </button>
+                    <span class="conc-badge">@_fattureSelezionate / @Fatture.Count selezionate</span>
+                </span>
             </div>
 
             <div class="emma-grid-wrapper">
@@ -158,22 +198,48 @@
                         }
                         else
                         {
-                            @foreach (var riga in Fatture)
+                            @foreach (var gruppo in Raggruppa(Fatture))
                             {
-                                var r = riga;
-                                <tr @key="r" class="@(r.Selezionato ? "selected" : "")">
+                                var g = gruppo;
+                                var aperto = _fattureAperte.Contains(g.Key);
+                                var totali = g.Count();
+                                var selezionate = g.Count(x => x.Selezionato);
+
+                                <tr @key="@("g-" + g.Key)" class="group-row @(aperto ? "open" : "")">
                                     <td class="cell-center">
-                                        <input type="checkbox" checked="@r.Selezionato"
-                                               @onchange="e => CambiaSelezione(r, e.Value is true)"
+                                        <input type="checkbox"
+                                               checked="@(selezionate == totali)"
+                                               @onchange="e => SelezionaGruppo(g, e.Value is true)"
                                                disabled="@_busy" />
                                     </td>
-                                    <td>@r.Fornitore</td>
-                                    <td>@r.NumeroDocumento</td>
-                                    <td>@r.DataDocumento</td>
-                                    <td>@r.CodiceArticolo</td>
-                                    <td>@r.DescrizioneArticolo</td>
-                                    <td class="cell-right">@(Qta(r.Qta))</td>
+                                    <td colspan="5" @onclick="() => ToggleGruppo(_fattureAperte, g.Key)">
+                                        <span class="expander">@(aperto ? "▼" : "►")</span>
+                                        <span class="group-title">@NomeGruppo(g.Key)</span>
+                                        <span class="group-count">@totali righe · @selezionate selezionate</span>
+                                    </td>
+                                    <td class="cell-right">@(Qta(g.Sum(x => x.Qta)))</td>
                                 </tr>
+
+                                if (aperto)
+                                {
+                                    foreach (var riga in g)
+                                    {
+                                        var r = riga;
+                                        <tr @key="r" class="child-row @(r.Selezionato ? "selected" : "")">
+                                            <td class="cell-center">
+                                                <input type="checkbox" checked="@r.Selezionato"
+                                                       @onchange="e => CambiaSelezione(r, e.Value is true)"
+                                                       disabled="@_busy" />
+                                            </td>
+                                            <td class="cell-child"></td>
+                                            <td>@r.NumeroDocumento</td>
+                                            <td>@r.DataDocumento</td>
+                                            <td>@r.CodiceArticolo</td>
+                                            <td>@r.DescrizioneArticolo</td>
+                                            <td class="cell-right">@(Qta(r.Qta))</td>
+                                        </tr>
+                                    }
+                                }
                             }
                         }
                     </tbody>
@@ -202,6 +268,10 @@
 
     private int _bolleSelezionate;
     private int _fattureSelezionate;
+
+    // Fornitori con il gruppo espanso (drilldown) nelle due grid
+    private readonly HashSet<string> _bolleAperte = new();
+    private readonly HashSet<string> _fattureAperte = new();
 
     private List<EmmaFornitori> _fornitori = new();
     private string _fornitoreDescrizione = string.Empty;
@@ -272,6 +342,7 @@
             fatture.AddRange(await GetDocs(TipoDocFatturaAccompagnatoria));
             Fatture = ToRighe(fatture);
 
+            InizializzaGruppi();
             RicalcolaSelezionate();
         }
         catch (Exception ex)
@@ -384,6 +455,54 @@
     {
         _bolleSelezionate = Bolle.Count(r => r.Selezionato);
         _fattureSelezionate = Fatture.Count(r => r.Selezionato);
+    }
+
+    private void SelezionaGruppo(IEnumerable<RigaConciliazione> righe, bool valore)
+    {
+        foreach (var r in righe) r.Selezionato = valore;
+        RicalcolaSelezionate();
+    }
+
+    // ---------------- Raggruppamento per fornitore (drilldown) ----------------
+
+    /// <summary>Righe raggruppate per fornitore, gruppi in ordine alfabetico.</summary>
+    private static List<IGrouping<string, RigaConciliazione>> Raggruppa(List<RigaConciliazione> righe)
+        => righe
+            .GroupBy(r => r.Fornitore ?? string.Empty)
+            .OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+    private static string NomeGruppo(string chiave)
+        => string.IsNullOrWhiteSpace(chiave) ? "(fornitore non indicato)" : chiave;
+
+    private void ToggleGruppo(HashSet<string> aperti, string chiave)
+    {
+        if (!aperti.Remove(chiave)) aperti.Add(chiave);
+    }
+
+    private static bool TuttiAperti(HashSet<string> aperti, List<RigaConciliazione> righe)
+    {
+        var chiavi = Raggruppa(righe);
+        return chiavi.Count > 0 && chiavi.All(g => aperti.Contains(g.Key));
+    }
+
+    private void ToggleTuttiGruppi(HashSet<string> aperti, List<RigaConciliazione> righe)
+    {
+        if (TuttiAperti(aperti, righe)) { aperti.Clear(); return; }
+        foreach (var g in Raggruppa(righe)) aperti.Add(g.Key);
+    }
+
+    /// <summary>Dopo un caricamento: gruppi chiusi, tranne quando c'è un solo fornitore.</summary>
+    private void InizializzaGruppi()
+    {
+        _bolleAperte.Clear();
+        _fattureAperte.Clear();
+
+        var gb = Raggruppa(Bolle);
+        if (gb.Count == 1) _bolleAperte.Add(gb[0].Key);
+
+        var gf = Raggruppa(Fatture);
+        if (gf.Count == 1) _fattureAperte.Add(gf[0].Key);
     }
 
 
