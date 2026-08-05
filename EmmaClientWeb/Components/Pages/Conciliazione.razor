@@ -92,13 +92,14 @@
                             <th style="width:130px">Codice Articolo</th>
                             <th style="min-width:180px">Descrizione Articolo</th>
                             <th style="width:90px" class="cell-right">Quantità</th>
+                            <th style="width:90px" class="cell-right">Qtà Conc.</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (Bolle.Count == 0)
                         {
                             <tr>
-                                <td colspan="7" class="empty-state">
+                                <td colspan="8" class="empty-state">
                                     Imposta i filtri e premi "Carica Dati" per caricare le bolle.
                                 </td>
                             </tr>
@@ -126,7 +127,8 @@
                                             @NumeroDocumenti(g) documenti · @totali righe · @selezionate selezionate
                                         </span>
                                     </td>
-                                    <td class="cell-right">@(Qta(g.Sum(x => x.Qta)))</td>
+                                    <td class="cell-right"></td>
+                                    <td class="cell-right"></td>
                                 </tr>
 
                                 if (aperto)
@@ -159,7 +161,8 @@
                                                     @docTotali righe · @docSelezionate selezionate
                                                 </span>
                                             </td>
-                                            <td class="cell-right">@(Qta(d.Sum(x => x.Qta)))</td>
+                                            <td class="cell-right"></td>
+                                            <td class="cell-right"></td>
                                         </tr>
 
                                         if (docAperto)
@@ -179,6 +182,7 @@
                                                     <td>@r.CodiceArticolo</td>
                                                     <td>@r.DescrizioneArticolo</td>
                                                     <td class="cell-right">@(Qta(r.Qta))</td>
+                                                    <td class="cell-right">@(Qta(r.Qta_Conc))</td>
                                                 </tr>
                                             }
                                         }
@@ -222,13 +226,16 @@
                             <th style="width:130px">Codice Articolo</th>
                             <th style="min-width:180px">Descrizione Articolo</th>
                             <th style="width:90px" class="cell-right">Quantità</th>
+                            <th style="width:90px" class="cell-right">Qtà Conc.</th>
+                            <th style="width:110px">Stato</th>
+                            <th style="min-width:160px">Note</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (Fatture.Count == 0)
                         {
                             <tr>
-                                <td colspan="7" class="empty-state">
+                                <td colspan="10" class="empty-state">
                                     Imposta i filtri e premi "Carica Dati" per caricare le fatture.
                                 </td>
                             </tr>
@@ -256,7 +263,10 @@
                                             @NumeroDocumenti(g) documenti · @totali righe · @selezionate selezionate
                                         </span>
                                     </td>
-                                    <td class="cell-right">@(Qta(g.Sum(x => x.Qta)))</td>
+                                    <td class="cell-right"></td>
+                                    <td class="cell-right"></td>
+                                    <td></td>
+                                    <td></td>
                                 </tr>
 
                                 if (aperto)
@@ -289,7 +299,10 @@
                                                     @docTotali righe · @docSelezionate selezionate
                                                 </span>
                                             </td>
-                                            <td class="cell-right">@(Qta(d.Sum(x => x.Qta)))</td>
+                                            <td class="cell-right"></td>
+                                            <td class="cell-right"></td>
+                                            <td></td>
+                                            <td></td>
                                         </tr>
 
                                         if (docAperto)
@@ -309,6 +322,14 @@
                                                     <td>@r.CodiceArticolo</td>
                                                     <td>@r.DescrizioneArticolo</td>
                                                     <td class="cell-right">@(Qta(r.Qta))</td>
+                                                    <td class="cell-right">@(Qta(r.Qta_Conc))</td>
+                                                    <td>@r.Stato</td>
+                                                    <td>
+                                                        <input type="text" class="cell-edit"
+                                                               value="@r.Note"
+                                                               @onchange="e => CambiaNota(r, e.Value?.ToString())"
+                                                               disabled="@_busy" />
+                                                    </td>
                                                 </tr>
                                             }
                                         }
@@ -483,6 +504,9 @@
                     DescrizioneArticolo = articolo.Descrizione,
                     UnitaMisura = articolo.UnitaMisura,
                     Qta = articolo.Quantita,
+                    Qta_Conc = 0,
+                    Note = string.Empty,
+                    Stato = string.Empty,
                     Data = data
                 });
             }
@@ -523,12 +547,17 @@
         return true;
     }
 
-    // ---------------- Selezione ----------------
+    // ---------------- Selezione ----------------  
 
     private void CambiaSelezione(RigaConciliazione riga, bool valore)
     {
         riga.Selezionato = valore;
         RicalcolaSelezionate();
+    }
+
+    private void CambiaNota(RigaConciliazione riga, string? valore)
+    {
+        riga.Note = valore ?? string.Empty;
     }
 
     private void SelezionaTutto(List<RigaConciliazione> righe, bool valore)
@@ -672,14 +701,15 @@
         var righeBolle = Bolle.ToList();
         var righeFatture = Fatture.ToList();
 
-        if (righeBolle.Count == 0 || righeFatture.Count == 0)
-        {
-            await _dialogs.ErroreAsync("Selezionare almeno una riga in ciascuna griglia.");
-            return;
-        }
+        #if !DEBUG
+    if (righeBolle.Count == 0 || righeFatture.Count == 0)
+    {
+    await _dialogs.ErroreAsync("Selezionare almeno una riga in ciascuna griglia.");
+    return;
+    }
+        #endif
 
-        if (!await _dialogs.ConfermaAsync(
-                $"Conciliare {righeBolle.Count} righe bolla con {righeFatture.Count} righe fattura?")) return;
+        if (!await _dialogs.ConfermaAsync($"Conciliare {righeBolle.Count} righe bolla con {righeFatture.Count} righe fattura?")) return;
 
         try
         {
@@ -691,16 +721,79 @@
             ret.ForEach(x =>
             {
                 string fornitore = x.Document.Fornitore;
+
+                var bolleGrid = Bolle.Where(x => x.Fornitore == fornitore).ToList();
+                var fattureGrid = Fatture.Where(x => x.Fornitore == fornitore).ToList();
+
                 var b = x.Document.BolleNonConciliate.Count();
                 var f = x.Document.FattureNonConciliate.Count();
                 var c = x.Document.Conciliazioni.Count();
+
                 s += $"\n\n" +
                      $"Fornitore: {fornitore}\n" +
                      $"Bolle non conciliate: {b}\n" +
                      $"Fatture non conciliate: {f}\n" +
-                     $"Conciliazioni proposte: {c}";    
+                     $"Conciliazioni proposte: {c}";
+
+
+                foreach (var n in x.Document.BolleNonConciliate)
+                {
+                    var id_bolla_non = n.Id;
+                    var codide_bolla_non = n.Codice;
+                    var qta_bolla_non = n.Qta;                    
+                }
+
+                foreach (var m in x.Document.FattureNonConciliate)
+                {
+                    var id_fattura_non = m.Id;
+                    var r = fattureGrid.Where(x => x.IdRiga == id_fattura_non).FirstOrDefault();
+                    if (r is not null)
+                    {
+                        r.Note = "";
+                        r.Stato = "NON_CONCILIATA";
+                    }
+                    var codide_fattura_non = m.Codice;
+                    var qta_fattura_non = m.Qta;                    
+                }
+
+                //Ciclo per ogni riga fattura
+                foreach (var conc in x.Document.Conciliazioni)
+                {
+                    var stato_conc = conc.StatoConciliazione;
+                    var note = conc.Note;
+
+                    var diff = conc.DifferenzaQta;
+                    var totale = conc.TotaleQtaBolle;
+
+                    var id_fattura = conc.Fattura.Id;
+                    
+                    var r = fattureGrid.Where(x=>x.IdRiga == id_fattura).FirstOrDefault();
+                    if (r is not null) {
+                        if (conc.DifferenzaQta == 0) r.Selezionato = true;
+                        r.Qta_Conc = conc.TotaleQtaBolle;
+                        r.Note = conc.Note;
+                        r.Stato = conc.StatoConciliazione;
+                    }
+
+                    var cod_fattura = conc.Fattura.Codice;
+                    var qta_fattura = conc.Fattura.Qta;
+
+                    var bolle_collegate = conc.BolleCollegate;
+                    foreach (var bolla in bolle_collegate)
+                    {
+                        var id_bolla = bolla.Id;
+                        var s = bolleGrid.Where(x => x.IdRiga == id_bolla).FirstOrDefault();
+                        if (s is not null) {
+                            s.Selezionato = true;
+                            s.Qta_Conc = bolla.Qta;
+                        }
+
+                        var score_bolla = bolla.FuzzyScore;
+                        var qta_bolla = bolla.Qta;
+                        var codice_orig_bolla = bolla.CodiceOriginale;                        
+                    }
+                }
             });
-            
 
             await _dialogs.InfoAsync(s);
         }
