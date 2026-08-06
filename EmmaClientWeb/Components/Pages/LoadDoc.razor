@@ -111,9 +111,9 @@
                             <td><input class="cell-edit" value="@a.Codice" @onchange="e => a.Codice = e.Value?.ToString() ?? string.Empty" /></td>
                             <td><input class="cell-edit" value="@a.Descrizione" @onchange="e => a.Descrizione = e.Value?.ToString() ?? string.Empty" /></td>
                             @* input type=number vuole sempre il formato invariante *@
-                            <td><input class="cell-edit cell-right" type="number" step="1" value="@Inv(a.Quantita)" @onchange="e => a.Quantita = ToDouble(e.Value)" /></td>
+                            <td><input class="cell-edit cell-right" type="number" step="1" value="@Inv(a.Quantita)" @onchange="e => a.Quantita = ToDecimal(e.Value)" /></td>
                             <td><input class="cell-edit" value="@a.UnitaMisura" @onchange="e => a.UnitaMisura = e.Value?.ToString() ?? string.Empty" /></td>
-                            <td><input class="cell-edit cell-right" type="number" step="0.01" value="@Inv(a.Totale)" @onchange="e => a.Totale = ToDouble(e.Value)" /></td>
+                            <td><input class="cell-edit cell-right" type="number" step="0.01" value="@Inv(a.Totale)" @onchange="e => a.Totale = ToDecimal(e.Value)" /></td>
                         </tr>
                     }
                 }
@@ -159,13 +159,13 @@
         _docService = Factory.Docs();
     }
 
-    private static double ToDouble(object? value)
-        => double.TryParse(value?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var d)
+    private static decimal ToDecimal(object? value)
+        => decimal.TryParse(value?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var d)
             ? d
-            : double.TryParse(value?.ToString(), NumberStyles.Any, CultureInfo.CurrentCulture, out var d2) ? d2 : 0;
+            : decimal.TryParse(value?.ToString(), NumberStyles.Any, CultureInfo.CurrentCulture, out var d2) ? d2 : 0;
 
     /// <summary>Formato invariante richiesto da input type="number".</summary>
-    private static string Inv(double v) => v.ToString(CultureInfo.InvariantCulture);
+    private static string Inv(decimal v) => v.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Replica di CleanUI()</summary>
     private void CleanUI()

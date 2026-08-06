@@ -173,12 +173,12 @@
                                                                        @onchange="e => AggiornaCampo(r, () => r.UnitaMisura = e.Value?.ToString())" /></td>
                                                             @* input type=number vuole sempre il formato invariante *@
                                                             <td><input class="cell-edit cell-right" type="number" step="1" value="@Inv(r.Qta)"
-                                                                       @onchange="e => AggiornaCampo(r, () => r.Qta = ToDouble(e.Value))" /></td>
+                                                                       @onchange="e => AggiornaCampo(r, () => r.Qta = ToDecimal(e.Value))" /></td>
                                                             <td><input class="cell-edit cell-right" type="number" step="0.01" value="@Inv(r.Imponibile)"
-                                                                       @onchange="e => AggiornaCampo(r, () => r.Imponibile = ToDouble(e.Value))" /></td>
+                                                                       @onchange="e => AggiornaCampo(r, () => r.Imponibile = ToDecimal(e.Value))" /></td>
                                                             <td class="cell-center">@r.IVA</td>
                                                             <td><input class="cell-edit cell-right" type="number" step="0.01" value="@Inv(r.Totale)"
-                                                                       @onchange="e => AggiornaCampo(r, () => r.Totale = ToDouble(e.Value))" /></td>
+                                                                       @onchange="e => AggiornaCampo(r, () => r.Totale = ToDecimal(e.Value))" /></td>
                                                             <td class="cell-center">
                                                                 @* TestoBottone: "Aggiungi" (verde) se IdRiga vuoto, altrimenti "Elimina" (rosso) *@
                                                                 <button class="btn btn-sm @(r.TestoBottone == "Elimina" ? "btn-red" : "btn-green")"
@@ -261,13 +261,13 @@
         StateHasChanged();
     }
 
-    private static double ToDouble(object? value)
-        => double.TryParse(value?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var d)
+    private static decimal ToDecimal(object? value)
+        => decimal.TryParse(value?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var d)
             ? d
-            : double.TryParse(value?.ToString(), NumberStyles.Any, CultureInfo.CurrentCulture, out var d2) ? d2 : 0;
+            : decimal.TryParse(value?.ToString(), NumberStyles.Any, CultureInfo.CurrentCulture, out var d2) ? d2 : 0;
 
     /// <summary>Formato invariante richiesto da input type="number".</summary>
-    private static string Inv(double v) => v.ToString(CultureInfo.InvariantCulture);
+    private static string Inv(decimal v) => v.ToString(CultureInfo.InvariantCulture);
 
     private void ToggleDettagli(MasterDocumento m)
         => _espanso = ReferenceEquals(_espanso, m) ? null : m;

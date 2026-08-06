@@ -46,14 +46,14 @@
             <div class="emma-separator"></div>
 
             <button class="btn btn-green" @onclick="ProponiConciliazione_Click" disabled="@(_busy)">
-                <span>🔗</span><span>Proponi Concilia</span>
+                <span>🔗</span><span>Concilia</span>
             </button>
 
             <div class="emma-separator"></div>
 
-            <button class="btn btn-green" @onclick="Concilia_Click"
-                    disabled="@(_busy || _bolleSelezionate == 0 || _fattureSelezionate == 0)">
-                <span>🔗</span><span>Concilia</span>
+            <button class="btn btn-blue" @onclick="Concilia_Click"
+                    disabled="@(_busy)">
+                <span>💾</span><span>Salva</span>
             </button>
         </div>
     </div>
@@ -424,7 +424,7 @@
         StateHasChanged();
     }
 
-    private static string Qta(double v) => v.ToString("0.###", CultureInfo.CurrentCulture);
+    private static string Qta(decimal v) => v.ToString("0.###", CultureInfo.CurrentCulture);
 
     // ---------------- Caricamento dati ----------------
 
@@ -441,13 +441,15 @@
         {
             _busy = true;
 
+            List<EmmaConciliaRighe> _righe = await _conciliazioneService.GetAllAsync();
+
             // Grid di sinistra: DDT / bolle
-            Bolle = ToRighe(await GetDocs(TipoDocDdt));
+            Bolle = await ToRighe(await GetDocs(TipoDocDdt), _righe);
 
             // Grid di destra: fatture + fatture accompagnatorie
             var fatture = await GetDocs(TipoDocFattura);
             fatture.AddRange(await GetDocs(TipoDocFatturaAccompagnatoria));
-            Fatture = ToRighe(fatture);
+            Fatture = await ToRighe(fatture, _righe);
 
             InizializzaGruppi();
             RicalcolaSelezionate();
@@ -473,11 +475,12 @@
         };
 
         var docs = await _docService.GetDocsAsync(filtri);
+        List<EmmaConciliaRighe> _righe = await _conciliazioneService.GetAllAsync();
         return docs ?? new List<EmmaDoc>();
     }
 
     /// <summary>Appiattisce i documenti in righe articolo applicando il filtro date lato client.</summary>
-    private List<RigaConciliazione> ToRighe(List<EmmaDoc> docs)
+    private async Task<List<RigaConciliazione>> ToRighe(List<EmmaDoc> docs, List<EmmaConciliaRighe> _righe)
     {
         var risultato = new List<RigaConciliazione>();
 
@@ -491,24 +494,49 @@
 
             foreach (var articolo in doc.Articoli)
             {
-                risultato.Add(new RigaConciliazione
+                var rigaConciliazione = _righe.FirstOrDefault(x => x.id_riga == articolo.Id_Riga);
+                if (rigaConciliazione != null)
                 {
-                    Selezionato = false,
-                    IdMaster = doc.Id,
-                    IdRiga = articolo.Id_Riga,
-                    Fornitore = doc.Mittente,
-                    NumeroDocumento = doc.NumeroBolla,
-                    DataDocumento = doc.DataBolla,
-                    TipoDocumento = doc.TipoDocumento,
-                    CodiceArticolo = articolo.Codice,
-                    DescrizioneArticolo = articolo.Descrizione,
-                    UnitaMisura = articolo.UnitaMisura,
-                    Qta = articolo.Quantita,
-                    Qta_Conc = 0,
-                    Note = string.Empty,
-                    Stato = string.Empty,
-                    Data = data
-                });
+                    risultato.Add(new RigaConciliazione
+                    {
+                        Selezionato = rigaConciliazione.flag == 0 ? false: true,
+                        IdMaster = doc.Id,
+                        IdRiga = articolo.Id_Riga,
+                        Fornitore = doc.Mittente,
+                        NumeroDocumento = doc.NumeroBolla,
+                        DataDocumento = doc.DataBolla,
+                        TipoDocumento = doc.TipoDocumento,
+                        CodiceArticolo = articolo.Codice,
+                        DescrizioneArticolo = articolo.Descrizione,
+                        UnitaMisura = articolo.UnitaMisura,
+                        Qta = articolo.Quantita,
+                        Qta_Conc = rigaConciliazione.qta_canc,
+                        Note = rigaConciliazione.note,
+                        Stato = rigaConciliazione.stato,
+                        Data = data
+                    });
+                }
+                else
+                {
+                    risultato.Add(new RigaConciliazione
+                        {
+                            Selezionato = false,
+                            IdMaster = doc.Id,
+                            IdRiga = articolo.Id_Riga,
+                            Fornitore = doc.Mittente,
+                            NumeroDocumento = doc.NumeroBolla,
+                            DataDocumento = doc.DataBolla,
+                            TipoDocumento = doc.TipoDocumento,
+                            CodiceArticolo = articolo.Codice,
+                            DescrizioneArticolo = articolo.Descrizione,
+                            UnitaMisura = articolo.UnitaMisura,
+                            Qta = articolo.Quantita,
+                            Qta_Conc = 0,
+                            Note = string.Empty,
+                            Stato = string.Empty,
+                            Data = data
+                        });
+                }
             }
         }
 
@@ -673,7 +701,7 @@
             _busy = true;
 
             // Step 3: Salva le conciliazioni
-            //await SalvaConciliazioni(matching);
+            await SalvaConciliazioni();
 
             await _dialogs.MostraMessaggioAsync("Informazione", "Salvataggio conciliazioni terminato.");
         }
@@ -809,26 +837,11 @@
 
 
     /// <summary>Salva le conciliazioni via API (POST /api/v1/conciliazione).</summary>
-    private async Task SalvaConciliazioni(List<(RigaConciliazione Bolla, RigaConciliazione Fattura)> matching)
+    private async Task SalvaConciliazioni()
     {
-        // TODO: implementare endpoint POST /api/v1/conciliazione sul server
-        // per ogni (bolla, fattura) in matching, salvare il record di conciliazione.
-        // Per ora, simuliamo il salvataggio.
+        var righeBolle = Bolle.ToList();
+        var righeFatture = Fatture.ToList();
+        await _conciliazioneService.SalvaConciliazione(righeBolle, righeFatture);
 
-        // var righeBolle = Bolle.Where(r => r.Selezionato).ToList();
-        // var righeFatture = Fatture.Where(r => r.Selezionato).ToList();
-
-        foreach (var (bolla, fattura) in matching)
-        {
-            // Esempio di payload da inviare:
-            // var conciliazione = new
-            // {
-            //     IdRigaBolla = bolla.IdRiga,
-            //     IdRigaFattura = fattura.IdRiga,
-            //     DataConciliazione = DateTime.UtcNow,
-            //     Utente = Session.User
-            // };
-            // await _docService.SalvaConciliazione(conciliazione);
-        }
     }
 }
