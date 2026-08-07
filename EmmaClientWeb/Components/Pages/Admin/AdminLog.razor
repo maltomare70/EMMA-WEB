@@ -1,0 +1,343 @@
+@page "/admin/log"
+@layout AdminLayout
+@using Emma.Services.Services
+@inject AdminSession Admin
+@inject AdminServiceFactory Factory
+@inject NavigationManager Nav
+
+@* Consultazione dei log per tenant. Sola lettura: nessuna modifica, nessuna cancellazione.
+   Il tenant viene passato al server tramite l'header x-tenant (vedi LogService.GetAllAsync(tenant)). *@
+
+<div class="emma-page @(_busy ? "busy" : "")">
+
+    <div class="emma-toolbar">
+        <div class="emma-toolbar-left">
+            <div class="emma-field">
+                <label>Tenant:</label>
+                <select class="emma-select" style="width:320px"
+                        value="@_tenantSelezionato"
+                        @onchange="OnTenantChanged" disabled="@_busy">
+                    <option value="">Seleziona Tenant...</option>
+                    @foreach (var t in _tenants)
+                    {
+                        <option value="@t.codice">@t.codice — @t.descrizione</option>
+                    }
+                </select>
+            </div>
+
+            <div class="emma-separator"></div>
+
+            @* Filtri applicati lato client sulle righe già caricate: non richiedono una nuova chiamata *@
+            <div class="emma-field">
+                <label for="dtDa">Da:</label>
+                <input id="dtDa" class="emma-input" type="date" style="width:150px"
+                       @bind="_da" @bind:format="yyyy-MM-dd" @bind:after="AggiornaFiltro"
+                       disabled="@(_busy || !TenantScelto)" />
+            </div>
+
+            <div class="emma-field">
+                <label for="dtA">A:</label>
+                <input id="dtA" class="emma-input" type="date" style="width:150px"
+                       @bind="_a" @bind:format="yyyy-MM-dd" @bind:after="AggiornaFiltro"
+                       disabled="@(_busy || !TenantScelto)" />
+            </div>
+
+            <div class="emma-field">
+                <label for="cboStato">Stato:</label>
+                <select id="cboStato" class="emma-select" style="width:190px"
+                        value="@_stato" @onchange="OnStatoChanged" disabled="@(_busy || !TenantScelto)">
+                    <option value="">Tutti</option>
+                    @foreach (var s in StatiDisponibili)
+                    {
+                        <option value="@s">@DescrizioneStato(s)</option>
+                    }
+                </select>
+            </div>
+
+            <button class="btn btn-default btn-sm" @onclick="() => ImpostaMese(0)"
+                    disabled="@(_busy || !TenantScelto)">Mese corrente</button>
+            <button class="btn btn-default btn-sm" @onclick="() => ImpostaMese(-1)"
+                    disabled="@(_busy || !TenantScelto)">Mese precedente</button>
+            <button class="btn btn-grey btn-sm" @onclick="PulisciFiltro"
+                    disabled="@_busy">Reimposta filtri</button>
+
+            <div class="emma-separator"></div>
+
+            <button class="btn btn-default" @onclick="CaricaLog" disabled="@(_busy || !TenantScelto)">🔄 Ricarica</button>
+            @if (_busy)
+            {
+                <span class="emma-spinner"></span>
+            }
+            else if (TenantScelto)
+            {
+                @if (FiltroAttivo)
+                {
+                    <span class="file-label done">@LogFiltrati.Count righe su @ListaLog.Count</span>
+                }
+                else
+                {
+                    <span class="file-label done">@ListaLog.Count righe di log</span>
+                }
+
+                @if (ListaLog.Count >= LimiteServer)
+                {
+                    @* L'endpoint applica logs.Take(1000): oltre questa soglia i totali sono parziali *@
+                    <span class="file-label">il server restituisce al massimo @LimiteServer righe: i totali sono parziali</span>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="emma-grid-wrapper">
+        <table class="emma-grid">
+            <thead>
+                <tr>
+                    <th style="width:60px">ID</th>
+                    <th style="width:150px">Data Creazione</th>
+                    <th style="width:120px">Token Input</th>
+                    <th style="width:120px">Token Output</th>
+                    <th style="width:120px">Token Totali</th>
+                    <th style="width:130px">Costo €.</th>
+                    <th style="width:80px">Stato</th>
+                    <th>Note</th>
+                    <th style="width:110px">Durata (sec.)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!TenantScelto)
+                {
+                    <tr>
+                        <td colspan="9" class="empty-state">Selezionare un tenant per visualizzare i log.</td>
+                    </tr>
+                }
+                else if (!ListaLog.Any())
+                {
+                    <tr>
+                        <td colspan="9" class="empty-state">Nessun log disponibile per il tenant «@_tenantSelezionato».</td>
+                    </tr>
+                }
+                else if (!LogFiltrati.Any())
+                {
+                    <tr>
+                        <td colspan="9" class="empty-state">Nessun log nel periodo selezionato.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var l in LogFiltrati)
+                    {
+                        <tr @key="l.id">
+                            <td>@l.id</td>
+                            <td>@l.data_creazione.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="cell-right">@l.token_input.ToString("N0")</td>
+                            <td class="cell-right">@l.token_output.ToString("N0")</td>
+                            <td class="cell-right">@l.token_tot.ToString("N0")</td>
+                            <td class="cell-right">@l.cost.ToString("0.000000")</td>
+                            <td class="cell-center">@l.stato</td>
+                            <td>@l.message</td>
+                            <td class="cell-right">@l.duration.ToString("N0")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+
+            @if (TenantScelto && LogFiltrati.Any())
+            {
+                <tfoot>
+                    <tr class="row-totali">
+                        <td colspan="2">@EtichettaTotali</td>
+                        <td class="cell-right">@TotTokenInput.ToString("N0")</td>
+                        <td class="cell-right">@TotTokenOutput.ToString("N0")</td>
+                        <td class="cell-right">@TotTokenTot.ToString("N0")</td>
+                        <td class="cell-right">@TotCosto.ToString("0.000000")</td>
+                        <td></td>
+                        <td></td>
+                        <td class="cell-right">@TotDurata.ToString("N0")</td>
+                    </tr>
+                </tfoot>
+            }
+        </table>
+    </div>
+</div>
+
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    /// <summary>L'endpoint /api/logs/tenant tronca il risultato a 1000 righe.</summary>
+    private const int LimiteServer = 1000;
+
+    private List<EmmaTenant> _tenants = new();
+    private string _tenantSelezionato = string.Empty;
+
+    private List<EmmaLog> ListaLog { get; set; } = new();
+
+    private bool _busy;
+    private EmmaDialogs _dialogs = default!;
+    private LogService _logService = default!;
+    private ITenantServiceClient _tenantService = default!;
+
+    // Filtri applicati lato client sulle righe già caricate
+    private DateTime? _da;
+    private DateTime? _a;
+
+    /// <summary>Stato selezionato; null significa "Tutti". Default: 1 (elaborazioni riuscite).</summary>
+    private int? _stato = 1;
+
+    /// <summary>Valori scritti dal server in EmmaLog.stato.</summary>
+    private static readonly int[] StatiDisponibili = { -2, -1, 0, 1 };
+
+    private static string DescrizioneStato(int stato) => stato switch
+    {
+        1 => "1 – OK",
+        0 => "0 – Non definito",
+        -1 => "-1 – Errore AI",
+        -2 => "-2 – Errore server",
+        _ => stato.ToString()
+    };
+
+    private bool TenantScelto => !string.IsNullOrWhiteSpace(_tenantSelezionato);
+
+    private bool FiltroAttivo => _da.HasValue || _a.HasValue || _stato.HasValue;
+
+    /// <summary>
+    /// Righe nel periodo selezionato. Calcolato una volta per cambio di filtro o di dati,
+    /// non a ogni accesso: in una singola render viene letto una decina di volte.
+    /// </summary>
+    private List<EmmaLog> LogFiltrati { get; set; } = new();
+
+    /// <summary>
+    /// Riapplica il filtro. Il confronto è sulla data locale, la stessa mostrata
+    /// in griglia, ed è inclusivo su entrambi gli estremi.
+    /// </summary>
+    private void AggiornaFiltro()
+    {
+        if (!FiltroAttivo)
+        {
+            LogFiltrati = ListaLog;
+            return;
+        }
+
+        LogFiltrati = ListaLog.Where(l =>
+        {
+            if (_stato.HasValue && l.stato != _stato.Value) return false;
+
+            var giorno = l.data_creazione.ToLocalTime().Date;
+            if (_da.HasValue && giorno < _da.Value.Date) return false;
+            if (_a.HasValue && giorno > _a.Value.Date) return false;
+            return true;
+        }).ToList();
+    }
+
+    private void OnStatoChanged(ChangeEventArgs e)
+    {
+        var valore = e.Value?.ToString();
+        _stato = int.TryParse(valore, out var s) ? s : null;
+        AggiornaFiltro();
+    }
+
+    // I totali seguono il filtro: senza periodo sono su tutte le righe restituite dal server
+    private long TotTokenInput => LogFiltrati.Sum(l => (long)l.token_input);
+    private long TotTokenOutput => LogFiltrati.Sum(l => (long)l.token_output);
+    private long TotTokenTot => LogFiltrati.Sum(l => (long)l.token_tot);
+    private double TotCosto => LogFiltrati.Sum(l => l.cost);
+    private long TotDurata => LogFiltrati.Sum(l => l.duration);
+
+    private string EtichettaTotali
+    {
+        get
+        {
+            var righe = LogFiltrati.Count;
+            var stato = _stato.HasValue ? $", stato {_stato.Value}" : string.Empty;
+
+            if (!_da.HasValue && !_a.HasValue) return $"Totali ({righe} righe{stato})";
+
+            var da = _da?.ToString("dd/MM/yyyy") ?? "inizio";
+            var a = _a?.ToString("dd/MM/yyyy") ?? "oggi";
+            return $"Totali dal {da} al {a} ({righe} righe{stato})";
+        }
+    }
+
+    /// <summary>Imposta il filtro sul mese indicato: 0 = corrente, -1 = precedente.</summary>
+    private void ImpostaMese(int scostamento)
+    {
+        var primo = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(scostamento);
+        _da = primo;
+        _a = primo.AddMonths(1).AddDays(-1);
+        AggiornaFiltro();
+    }
+
+    /// <summary>Riporta i filtri ai valori iniziali: nessun periodo, stato 1.</summary>
+    private void PulisciFiltro()
+    {
+        _da = null;
+        _a = null;
+        _stato = 1;
+        AggiornaFiltro();
+    }
+
+    protected override void OnInitialized()
+    {
+        if (!Admin.IsAuthenticated) { Nav.NavigateTo("/admin"); return; }
+
+        _logService = Factory.Logs();
+        _tenantService = Factory.Tenants();
+    }
+
+    // Il caricamento avviene dopo il primo render, quando il @ref dei dialog è valorizzato
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Admin.IsAuthenticated) return;
+
+        await CaricaTenants();
+        StateHasChanged();
+    }
+
+    private async Task CaricaTenants()
+    {
+        try
+        {
+            _busy = true;
+            var lista = await _tenantService.GetsAsync();
+            _tenants = lista.OrderBy(t => t.codice).ToList();
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task OnTenantChanged(ChangeEventArgs e)
+    {
+        _tenantSelezionato = e.Value?.ToString() ?? string.Empty;
+        ListaLog = new();
+        AggiornaFiltro();
+
+        if (TenantScelto) await CaricaLog();
+    }
+
+    private async Task CaricaLog()
+    {
+        if (!TenantScelto) return;
+
+        try
+        {
+            _busy = true;
+            var lista = await _logService.GetAllAsync(_tenantSelezionato);
+            ListaLog = lista.OrderByDescending(l => l.data_creazione).ToList();
+        }
+        catch (Exception ex)
+        {
+            ListaLog = new();
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            AggiornaFiltro();
+            _busy = false;
+        }
+    }
+}

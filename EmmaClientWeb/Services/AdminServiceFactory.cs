@@ -26,4 +26,7 @@ public class AdminServiceFactory
 
     public IUserService Users()
         => new UserService(ServerUrl, _session.User, _session.Password);
+
+    public LogService Logs()
+        => new LogService(ServerUrl, _session.User, _session.Password);
 }

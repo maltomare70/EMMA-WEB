@@ -432,6 +432,19 @@ table.emma-grid tbody tr.expandable {
 .cell-center { text-align: center; }
 .col-actions { width: 100px; text-align: center; }
 
+/* Riga dei totali: sticky in fondo come l'header lo è in cima */
+table.emma-grid tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: #F3F3F3;
+    border: 1px solid var(--emma-grid-border);
+    padding: 8px 6px;
+    font-weight: 700;
+    color: var(--emma-label);
+    white-space: nowrap;
+}
+
 /* Input dentro le celle editabili (IsReadOnly=False dei DataGrid) */
 table.emma-grid input.cell-edit,
 table.emma-grid select.cell-edit {
