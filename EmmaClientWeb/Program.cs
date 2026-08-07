@@ -24,6 +24,20 @@ builder.Services.AddScoped<UserSession>();
 // Factory che istanzia i servizi di Emma.Services con url/credenziali correnti
 builder.Services.AddScoped<EmmaServiceFactory>();
 
+// --- Sezione Admin (/admin) ---
+// Credenziali da appsettings.json (sezione "Admin"), fallback admin/admin
+builder.Services.AddSingleton(new AdminOptions
+{
+    User = builder.Configuration["Admin:User"] ?? "admin",
+    Password = builder.Configuration["Admin:Password"] ?? "admin"
+});
+
+// Sessione admin, separata da UserSession: una per circuito Blazor
+builder.Services.AddScoped<AdminSession>();
+
+// Factory dei servizi Emma.Services con le credenziali admin
+builder.Services.AddScoped<AdminServiceFactory>();
+
 var app = builder.Build();
 
 // Forza la cultura in Italiano come faceva App.axaml.cs

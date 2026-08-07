@@ -1,0 +1,64 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject AdminSession Admin
+@inject NavigationManager Nav
+
+@* Layout della sezione Admin: stessa shell del client ma senza manuale/sessione utente *@
+
+<div class="emma-shell">
+    <div class="emma-titlebar">
+        @if (!IsLoginPage && !IsHome)
+        {
+            <button class="btn btn-default btn-sm" @onclick="@(() => Nav.NavigateTo("/admin/home"))">← Indietro</button>
+        }
+        <span class="emma-window-title">@Title</span>
+        @if (Admin.IsAuthenticated)
+        {
+            <span class="emma-spacer"></span>
+            <span class="emma-user">@Admin.User</span>
+            <button class="btn btn-grey btn-sm" @onclick="Esci">Esci</button>
+        }
+    </div>
+
+    <div class="emma-content">
+        @Body
+    </div>
+</div>
+
+@code {
+    private string Path => Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0].TrimEnd('/').ToLowerInvariant();
+
+    private string Title => Path switch
+    {
+        "admin/home" => "Emma Admin",
+        "admin/tenant" => "Tenants",
+        "admin/users" => "Utenti del Tenant",
+        _ => "Emma Admin"
+    };
+
+    private bool IsLoginPage => Path == "admin";
+    private bool IsHome => Path == "admin/home";
+
+    protected override void OnInitialized()
+    {
+        Admin.Changed += OnStateChanged;
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+        => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Admin.Changed -= OnStateChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+
+    private void Esci()
+    {
+        Admin.SignOut();
+        Nav.NavigateTo("/admin");
+    }
+}

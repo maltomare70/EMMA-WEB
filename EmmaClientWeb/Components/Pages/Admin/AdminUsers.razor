@@ -1,0 +1,364 @@
+@page "/admin/users"
+@layout AdminLayout
+@using Emma.Services.Services
+@inject AdminSession Admin
+@inject AdminServiceFactory Factory
+@inject NavigationManager Nav
+
+@* Gestione degli utenti collegati a un tenant.
+   Il tenant va scelto per primo: senza tenant non si carica né si modifica nulla.
+   Usa IUserService (GetsAsync / AddAsync / EditAsync). *@
+
+<div class="emma-page @(_busy ? "busy" : "")">
+
+    <div class="emma-toolbar">
+        <div class="emma-toolbar-left">
+            <div class="emma-field">
+                <label>Tenant:</label>
+                <select class="emma-select" style="width:320px"
+                        value="@_tenantSelezionato"
+                        @onchange="OnTenantChanged" disabled="@_busy">
+                    <option value="">Seleziona Tenant...</option>
+                    @foreach (var t in _tenants)
+                    {
+                        <option value="@t.codice">@t.codice — @t.descrizione</option>
+                    }
+                </select>
+            </div>
+
+            <div class="emma-separator"></div>
+
+            <button class="btn btn-green2" @onclick="Aggiungi_Click" disabled="@(_busy || !TenantScelto)">Aggiungi Utente</button>
+            <button class="btn btn-info" @onclick="Modifica_Click" disabled="@(_busy || !TenantScelto || _selezionato is null)">Modifica Selezionato</button>
+            <div class="emma-separator"></div>
+            <button class="btn btn-default" @onclick="CaricaUtenti" disabled="@(_busy || !TenantScelto)">🔄 Ricarica</button>
+            @if (_busy)
+            {
+                <span class="emma-spinner"></span>
+            }
+        </div>
+    </div>
+
+    <div class="emma-grid-wrapper">
+        <table class="emma-grid">
+            <thead>
+                <tr>
+                    <th style="width:70px">ID</th>
+                    <th style="width:45%">Email</th>
+                    <th style="width:25%">Tenant</th>
+                    <th style="width:150px">Data Creazione</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!TenantScelto)
+                {
+                    <tr>
+                        <td colspan="4" class="empty-state">Selezionare un tenant per visualizzare gli utenti.</td>
+                    </tr>
+                }
+                else if (!ListaUtenti.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="empty-state">Nessun utente collegato al tenant «@_tenantSelezionato».</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var u in ListaUtenti)
+                    {
+                        <tr @key="u.id"
+                            class="@(ReferenceEquals(u, _selezionato) ? "selected" : "")"
+                            @onclick="() => _selezionato = u"
+                            @ondblclick="() => ApriForm(u)">
+                            <td>@u.id</td>
+                            <td>@u.email</td>
+                            <td>@u.tenant</td>
+                            <td>@u.data_creazione.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* ---- Finestra modale di inserimento / modifica ---- *@
+@if (_formAperto)
+{
+    <div class="dialog-overlay" @onclick="ChiudiForm">
+        <div class="dialog-window form-window" @onclick:stopPropagation="true">
+            <div class="win-title">@(_form.id == 0 ? "Nuovo Utente" : $"Modifica Utente #{_form.id}")</div>
+            <div class="form-body">
+
+                <div class="group">
+                    <label>Tenant:</label>
+                    @* Il tenant non è modificabile dal form: si cambia dal selettore in toolbar *@
+                    <span class="form-readonly">@_form.tenant</span>
+                </div>
+
+                <div class="group">
+                    <label for="txtEmail">Email:</label>
+                    <input id="txtEmail" class="emma-input" type="email" maxlength="200"
+                           placeholder="indirizzo@@dominio.it"
+                           @bind="_form.email" @bind:event="oninput" disabled="@_salvataggio" />
+                </div>
+
+                @if (_form.id == 0)
+                {
+                    <div class="group">
+                        <label for="txtPwd">Password:</label>
+                        <input id="txtPwd" class="emma-input" type="password" maxlength="100"
+                               placeholder="Password iniziale"
+                               @bind="_form.pwd" @bind:event="oninput" disabled="@_salvataggio" />
+                    </div>
+                }
+                else
+                {
+                    <div class="group">
+                        <label>Data creazione:</label>
+                        <span class="form-readonly">@_form.data_creazione.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                    @* In modifica la password non si tocca: il server salverebbe il valore in chiaro,
+                       quindi si rimanda indietro l'hash esistente senza mostrarlo. *@
+                    <div class="form-note">
+                        La password non è modificabile da qui: l'utente la cambia dalla pagina «Cambio Password» del client.
+                    </div>
+                }
+
+                <div class="dialog-actions">
+                    <button class="btn btn-dodger" @onclick="Salva_Click" disabled="@_salvataggio">
+                        @if (_salvataggio)
+                        {
+                            <span class="emma-spinner"></span>
+                        }
+                        else
+                        {
+                            <span>Salva</span>
+                        }
+                    </button>
+                    <button class="btn btn-grey" @onclick="ChiudiForm" disabled="@_salvataggio">Annulla</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    private List<EmmaTenant> _tenants = new();
+    private string _tenantSelezionato = string.Empty;
+
+    private List<EmmaUser> ListaUtenti { get; set; } = new();
+    private EmmaUser? _selezionato;
+
+    private bool _busy;
+    private bool _salvataggio;
+    private EmmaDialogs _dialogs = default!;
+    private IUserService _userService = default!;
+    private ITenantServiceClient _tenantService = default!;
+
+    // EmmaUser è un record con proprietà init-only: per l'editing serve un modello mutabile.
+    // Non nullable, così i lambda generati da @bind non producono warning di dereferenziazione.
+    private UserForm _form = new();
+    private bool _formAperto;
+
+    private bool TenantScelto => !string.IsNullOrWhiteSpace(_tenantSelezionato);
+
+    protected override void OnInitialized()
+    {
+        if (!Admin.IsAuthenticated) { Nav.NavigateTo("/admin"); return; }
+
+        _userService = Factory.Users();
+        _tenantService = Factory.Tenants();
+    }
+
+    // Il caricamento avviene dopo il primo render, quando il @ref dei dialog è valorizzato
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Admin.IsAuthenticated) return;
+
+        await CaricaTenants();
+        StateHasChanged();
+    }
+
+    private async Task CaricaTenants()
+    {
+        try
+        {
+            _busy = true;
+            var lista = await _tenantService.GetsAsync();
+            _tenants = lista.OrderBy(t => t.codice).ToList();
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task OnTenantChanged(ChangeEventArgs e)
+    {
+        _tenantSelezionato = e.Value?.ToString() ?? string.Empty;
+        _selezionato = null;
+        ListaUtenti = new();
+
+        if (TenantScelto) await CaricaUtenti();
+    }
+
+    private async Task CaricaUtenti()
+    {
+        if (!TenantScelto) return;
+
+        try
+        {
+            _busy = true;
+            var lista = await _userService.GetsAsync(_tenantSelezionato);
+            ListaUtenti = lista.OrderBy(u => u.email).ToList();
+            _selezionato = null;
+        }
+        catch (Exception ex)
+        {
+            ListaUtenti = new();
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Aggiungi_Click()
+    {
+        if (!TenantScelto) return;
+
+        _form = new UserForm { tenant = _tenantSelezionato };
+        _formAperto = true;
+    }
+
+    private void Modifica_Click()
+    {
+        if (_selezionato is not null) ApriForm(_selezionato);
+    }
+
+    private void ApriForm(EmmaUser u)
+    {
+        if (!TenantScelto) return;
+
+        _selezionato = u;
+        _form = UserForm.Da(u);
+        _formAperto = true;
+    }
+
+    private void ChiudiForm()
+    {
+        if (_salvataggio) return;
+        _formAperto = false;
+    }
+
+    private async Task Salva_Click()
+    {
+        var email = _form.email.Trim().ToLowerInvariant();
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            await _dialogs.ErroreAsync("Inserire l'Email!");
+            return;
+        }
+
+        // Controllo minimo di forma: il server non valida il formato
+        if (!email.Contains('@') || email.StartsWith('@') || email.EndsWith('@'))
+        {
+            await _dialogs.ErroreAsync("Email non valida!");
+            return;
+        }
+
+        if (_form.id == 0 && string.IsNullOrWhiteSpace(_form.pwd))
+        {
+            await _dialogs.ErroreAsync("Inserire la Password!");
+            return;
+        }
+
+        // L'email identifica l'utente: va tenuta univoca nel tenant
+        var duplicato = ListaUtenti.Any(u =>
+            u.id != _form.id &&
+            string.Equals(u.email, email, StringComparison.OrdinalIgnoreCase));
+
+        if (duplicato)
+        {
+            await _dialogs.ErroreAsync($"L'utente '{email}' esiste già nel tenant «{_tenantSelezionato}».");
+            return;
+        }
+
+        try
+        {
+            _salvataggio = true;
+            StateHasChanged();
+
+            _form.email = email;
+            var utente = _form.AEntity();
+
+            if (_form.id == 0)
+            {
+                await _userService.AddAsync(utente);
+            }
+            else
+            {
+                if (!await _userService.EditAsync(utente))
+                {
+                    await _dialogs.ErroreAsync("Il server non ha applicato la modifica.");
+                    return;
+                }
+            }
+
+            _formAperto = false;
+            await CaricaUtenti();
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _salvataggio = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Copia mutabile di EmmaUser, che è un record con proprietà init-only.</summary>
+    private sealed class UserForm
+    {
+        public int id { get; set; }
+        public string email { get; set; } = string.Empty;
+        public string? tenant { get; set; } = string.Empty;
+        public DateTime data_creazione { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// In inserimento è la password in chiaro (il server la cifra in AddUserAsync).
+        /// In modifica è l'hash già presente sul record: UpdateUserAsync non ri-cifra,
+        /// quindi va rimandato indietro invariato per non corromperlo.
+        /// </summary>
+        public string? pwd { get; set; } = string.Empty;
+
+        public static UserForm Da(EmmaUser u) => new()
+        {
+            id = u.id,
+            email = u.email,
+            pwd = u.pwd,
+            tenant = u.tenant,
+            data_creazione = u.data_creazione
+        };
+
+        public EmmaUser AEntity() => new()
+        {
+            id = id,
+            email = email,
+            pwd = pwd,
+            tenant = tenant,
+            data_creazione = data_creazione
+        };
+    }
+}

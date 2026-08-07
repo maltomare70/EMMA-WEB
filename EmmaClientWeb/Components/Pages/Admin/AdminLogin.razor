@@ -1,0 +1,108 @@
+@page "/admin"
+@layout AdminLayout
+@inject AdminSession Admin
+@inject NavigationManager Nav
+
+@* Stessa finestra di login del client, riservata agli amministratori *@
+
+<div class="login-backdrop @(_busy ? "busy" : "")">
+    <div class="login-window">
+        <div class="win-title">Login Amministratore</div>
+        <div class="login-body">
+            <h2>Area Admin</h2>
+
+            <div class="group">
+                <label for="txtAdminUser">Utente:</label>
+                <input id="txtAdminUser" class="emma-input" type="text" placeholder="Inserisci l'utente"
+                       @bind="_user" @bind:event="oninput" @onkeydown="OnKeyDown" disabled="@_busy" />
+            </div>
+
+            <div class="group">
+                <label for="txtAdminPassword">Password:</label>
+                <input id="txtAdminPassword" class="emma-input" type="password" placeholder="Inserisci la password"
+                       @bind="_password" @bind:event="oninput" @onkeydown="OnKeyDown" disabled="@_busy" />
+            </div>
+
+            <div class="login-actions">
+                <button class="btn btn-dodger" @onclick="BtnOk_Click" disabled="@_busy">
+                    @if (_busy)
+                    {
+                        <span class="emma-spinner"></span>
+                    }
+                    else
+                    {
+                        <span>OK</span>
+                    }
+                </button>
+                <button class="btn btn-red" @onclick="BtnCancel_Click" disabled="@_busy">Annulla</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    private string _user = string.Empty;
+    private string _password = string.Empty;
+    private bool _busy;
+    private EmmaDialogs _dialogs = default!;
+
+    protected override void OnInitialized()
+    {
+        // Sessione admin già attiva: salta il login
+        if (Admin.IsAuthenticated) Nav.NavigateTo("/admin/home");
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await BtnOk_Click();
+    }
+
+    private async Task BtnOk_Click()
+    {
+        if (string.IsNullOrWhiteSpace(_user))
+        {
+            await _dialogs.ErroreAsync("Inserire Utente!");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_password))
+        {
+            await _dialogs.ErroreAsync("Inserire Password!");
+            return;
+        }
+
+        try
+        {
+            _busy = true;
+            StateHasChanged();
+
+            if (Admin.Validate(_user, _password))
+            {
+                Admin.SignIn(_user, _password);
+                Nav.NavigateTo("/admin/home");
+            }
+            else
+            {
+                await _dialogs.ErroreAsync("Credenziali errate !");
+                _password = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private void BtnCancel_Click()
+    {
+        _user = string.Empty;
+        _password = string.Empty;
+    }
+}

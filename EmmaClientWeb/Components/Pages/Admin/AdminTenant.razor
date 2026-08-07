@@ -1,0 +1,275 @@
+@page "/admin/tenant"
+@layout AdminLayout
+@using Emma.Services.Services
+@inject AdminSession Admin
+@inject AdminServiceFactory Factory
+@inject NavigationManager Nav
+
+@* Gestione Tenant: elenco + finestra modale di inserimento/modifica.
+   Usa ITenantServiceClient (GetsAsync / AddAsync / EditAsync). *@
+
+<div class="emma-page @(_busy ? "busy" : "")">
+
+    <div class="emma-toolbar">
+        <div class="emma-toolbar-left">
+            <button class="btn btn-green2" @onclick="Aggiungi_Click" disabled="@_busy">Aggiungi Tenant</button>
+            <button class="btn btn-info" @onclick="Modifica_Click" disabled="@(_busy || _selezionato is null)">Modifica Selezionato</button>
+            <div class="emma-separator"></div>
+            <button class="btn btn-default" @onclick="CaricaDati" disabled="@_busy">🔄 Ricarica</button>
+            @if (_busy)
+            {
+                <span class="emma-spinner"></span>
+            }
+        </div>
+    </div>
+
+    <div class="emma-grid-wrapper">
+        <table class="emma-grid">
+            <thead>
+                <tr>
+                    <th style="width:70px">ID</th>
+                    <th style="width:20%">Codice</th>
+                    <th style="width:35%">Descrizione</th>
+                    <th style="width:25%">Mail From</th>
+                    <th style="width:150px">Data Creazione</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!ListaTenant.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="empty-state">Nessun tenant presente.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var t in ListaTenant)
+                    {
+                        <tr @key="t.id"
+                            class="@(ReferenceEquals(t, _selezionato) ? "selected" : "")"
+                            @onclick="() => _selezionato = t"
+                            @ondblclick="() => ApriForm(t)">
+                            <td>@t.id</td>
+                            <td>@t.codice</td>
+                            <td>@t.descrizione</td>
+                            <td>@t.mail_from</td>
+                            <td>@t.data_creazione.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* ---- Finestra modale di inserimento / modifica ---- *@
+@if (_formAperto)
+{
+    <div class="dialog-overlay" @onclick="ChiudiForm">
+        <div class="dialog-window form-window" @onclick:stopPropagation="true">
+            <div class="win-title">@(_form.id == 0 ? "Nuovo Tenant" : $"Modifica Tenant #{_form.id}")</div>
+            <div class="form-body">
+
+                <div class="group">
+                    <label for="txtCodice">Codice:</label>
+                    <input id="txtCodice" class="emma-input" type="text" maxlength="50"
+                           placeholder="Codice identificativo del tenant"
+                           @bind="_form.codice" @bind:event="oninput" disabled="@_salvataggio" />
+                </div>
+
+                <div class="group">
+                    <label for="txtDescrizione">Descrizione:</label>
+                    <input id="txtDescrizione" class="emma-input" type="text" maxlength="200"
+                           placeholder="Descrizione del tenant"
+                           @bind="_form.descrizione" @bind:event="oninput" disabled="@_salvataggio" />
+                </div>
+
+                <div class="group">
+                    <label for="txtMailFrom">Mail From:</label>
+                    <input id="txtMailFrom" class="emma-input" type="email" maxlength="200"
+                           placeholder="indirizzo@@dominio.it"
+                           @bind="_form.mail_from" @bind:event="oninput" disabled="@_salvataggio" />
+                </div>
+
+                @if (_form.id != 0)
+                {
+                    <div class="group">
+                        <label>Data creazione:</label>
+                        <span class="form-readonly">@_form.data_creazione.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                }
+
+                <div class="dialog-actions">
+                    <button class="btn btn-dodger" @onclick="Salva_Click" disabled="@_salvataggio">
+                        @if (_salvataggio)
+                        {
+                            <span class="emma-spinner"></span>
+                        }
+                        else
+                        {
+                            <span>Salva</span>
+                        }
+                    </button>
+                    <button class="btn btn-grey" @onclick="ChiudiForm" disabled="@_salvataggio">Annulla</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    private List<EmmaTenant> ListaTenant { get; set; } = new();
+    private EmmaTenant? _selezionato;
+
+    private bool _busy;
+    private bool _salvataggio;
+    private EmmaDialogs _dialogs = default!;
+    private ITenantServiceClient _tenantService = default!;
+
+    // EmmaTenant è un record con proprietà init-only: per l'editing serve un modello mutabile.
+    // Non nullable, così i lambda generati da @bind non producono warning di dereferenziazione.
+    private TenantForm _form = new();
+    private bool _formAperto;
+
+    protected override void OnInitialized()
+    {
+        if (!Admin.IsAuthenticated) { Nav.NavigateTo("/admin"); return; }
+
+        _tenantService = Factory.Tenants();
+    }
+
+    // Il caricamento avviene dopo il primo render, quando il @ref dei dialog è valorizzato
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Admin.IsAuthenticated) return;
+
+        await CaricaDati();
+        StateHasChanged();
+    }
+
+    private async Task CaricaDati()
+    {
+        try
+        {
+            _busy = true;
+            var lista = await _tenantService.GetsAsync();
+            ListaTenant = lista.OrderBy(t => t.codice).ToList();
+            _selezionato = null;
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Aggiungi_Click()
+    {
+        _form = new TenantForm();
+        _formAperto = true;
+    }
+
+    private void Modifica_Click()
+    {
+        if (_selezionato is not null) ApriForm(_selezionato);
+    }
+
+    private void ApriForm(EmmaTenant t)
+    {
+        _selezionato = t;
+        _form = TenantForm.Da(t);
+        _formAperto = true;
+    }
+
+    private void ChiudiForm()
+    {
+        if (_salvataggio) return;
+        _formAperto = false;
+    }
+
+    private async Task Salva_Click()
+    {
+        if (string.IsNullOrWhiteSpace(_form.codice))
+        {
+            await _dialogs.ErroreAsync("Inserire il Codice!");
+            return;
+        }
+
+        // Il codice identifica il tenant: va tenuto univoco
+        var duplicato = ListaTenant.Any(t =>
+            t.id != _form.id &&
+            string.Equals(t.codice, _form.codice.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        if (duplicato)
+        {
+            await _dialogs.ErroreAsync($"Esiste già un tenant con codice '{_form.codice.Trim()}'.");
+            return;
+        }
+
+        try
+        {
+            _salvataggio = true;
+            StateHasChanged();
+
+            var tenant = _form.AEntity();
+
+            if (_form.id == 0)
+            {
+                await _tenantService.AddAsync(tenant);
+            }
+            else
+            {
+                if (!await _tenantService.EditAsync(tenant))
+                {
+                    await _dialogs.ErroreAsync("Il server non ha applicato la modifica.");
+                    return;
+                }
+            }
+
+            _formAperto = false;
+            await CaricaDati();
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _salvataggio = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Copia mutabile di EmmaTenant, che è un record con proprietà init-only.</summary>
+    private sealed class TenantForm
+    {
+        public int id { get; set; }
+        public string codice { get; set; } = string.Empty;
+        public string? descrizione { get; set; } = string.Empty;
+        public string? mail_from { get; set; } = string.Empty;
+        public DateTime data_creazione { get; set; } = DateTime.UtcNow;
+
+        public static TenantForm Da(EmmaTenant t) => new()
+        {
+            id = t.id,
+            codice = t.codice,
+            descrizione = t.descrizione,
+            mail_from = t.mail_from,
+            data_creazione = t.data_creazione
+        };
+
+        public EmmaTenant AEntity() => new()
+        {
+            id = id,
+            codice = codice.Trim(),
+            descrizione = descrizione?.Trim(),
+            mail_from = mail_from?.Trim(),
+            data_creazione = data_creazione
+        };
+    }
+}
