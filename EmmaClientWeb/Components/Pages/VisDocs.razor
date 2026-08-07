@@ -80,7 +80,7 @@
                 <tr>
                     <th style="width:34px"></th>
                     <th>Fornitore</th>
-                    <th style="width:100px">Tipo Doc.</th>
+                    <th style="width:190px">Tipo Doc.</th>
                     <th style="width:150px">N° Documento</th>
                     <th style="width:150px">Data Documento</th>
                     <th class="col-actions"></th>
@@ -110,7 +110,22 @@
                                 <button class="expander">@(espanso ? "▼" : "▶")</button>
                             </td>
                             <td><strong>@m.Fornitore</strong></td>
-                            <td>@m.TipDocumento</td>
+                            <td @onclick:stopPropagation="true">
+                                <select class="cell-edit" value="@m.TipDocumento.Substring(0,1)"
+                                        @onchange="e => CambiaTipoDocumento(m, e.Value?.ToString())"
+                                        disabled="@_busy">
+                                    @foreach (var tipo in TipiDocumentoModificabili)
+                                    {
+                                        <option value="@tipo.Substring(0, 1)">@tipo.Substring(0, 1)</option>
+                                    }
+                                    @* valore non presente in lista: lo mostriamo comunque per non perderlo *@
+                            @*         @if (!string.IsNullOrWhiteSpace(m.TipDocumento)
+                                         && !TipiDocumentoModificabili.Contains(m.TipDocumento))
+                                    {
+                                        <option value="@m.TipDocumento.Substring(0, 1)">@m.TipDocumento.Substring(0, 1)</option>
+                                    } *@
+                                </select>
+                            </td>
                             <td>@m.NumeroDocumento</td>
                             <td>@m.DataDocumento</td>
                             <td class="col-actions">
@@ -213,6 +228,12 @@
     private static readonly string[] TipiDocumento = ArticoliServiceManager.GetTipodocs();
     private static readonly string[] StatiDocumento = ArticoliServiceManager.GetStatodocs();
 
+    /// <summary>
+    /// Tipi selezionabili sulla riga documento: l'elemento 0 ("Tutti") esiste solo
+    /// come filtro di ricerca e non è un tipo documento valido.
+    /// </summary>
+    private static readonly string[] TipiDocumentoModificabili = TipiDocumento.Skip(1).ToArray();
+
     private List<MasterDocumento> Documenti { get; set; } = new();
     private MasterDocumento? _espanso;
 
@@ -271,6 +292,39 @@
 
     private void ToggleDettagli(MasterDocumento m)
         => _espanso = ReferenceEquals(_espanso, m) ? null : m;
+
+    /// <summary>
+    /// Modifica del tipo documento sulla riga di testata.
+    /// NOTA: al momento la modifica resta solo in memoria (viene riflessa nell'export CSV)
+    /// perché IDocService non espone un aggiornamento della testata documento.
+    /// Quando l'endpoint sarà disponibile, la chiamata va inserita qui.
+    /// </summary>
+    private async void CambiaTipoDocumento(MasterDocumento master, string? nuovoTipo)
+    {
+        if (string.IsNullOrWhiteSpace(nuovoTipo)) return;
+
+          if (!await _dialogs.ConfermaAsync()) return;
+
+        try
+        {
+
+
+            master.TipDocumento = nuovoTipo.Substring(0, 1);
+            await _docService.CambioTipo(master);
+
+
+            
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+           
+        }
+       
+    }
 
     /// <summary>Replica di CaricaDati() — costruisce EmmaDocFilters dai combo.</summary>
     private async Task<List<EmmaDoc>?> CaricaDati()

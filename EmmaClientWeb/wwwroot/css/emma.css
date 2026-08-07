@@ -416,7 +416,8 @@ table.emma-grid tbody tr.expandable {
 .col-actions { width: 100px; text-align: center; }
 
 /* Input dentro le celle editabili (IsReadOnly=False dei DataGrid) */
-table.emma-grid input.cell-edit {
+table.emma-grid input.cell-edit,
+table.emma-grid select.cell-edit {
     width: 100%;
     height: 26px;
     padding: 2px 4px;
@@ -428,14 +429,20 @@ table.emma-grid input.cell-edit {
     outline: none;
 }
 
-table.emma-grid input.cell-edit:hover {
+table.emma-grid input.cell-edit:hover,
+table.emma-grid select.cell-edit:hover {
     border-color: #D0D0D0;
     background: #FFFFFF;
 }
 
-table.emma-grid input.cell-edit:focus {
+table.emma-grid input.cell-edit:focus,
+table.emma-grid select.cell-edit:focus {
     border-color: var(--emma-blue);
     background: #FFFFFF;
+}
+
+table.emma-grid select.cell-edit:disabled {
+    color: #5A5A5A;
 }
 
 table.emma-grid input.cell-edit[readonly] {
