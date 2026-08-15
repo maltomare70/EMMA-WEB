@@ -1,6 +1,8 @@
 @page "/admin/home"
 @layout AdminLayout
+@using Emma.Services.Services
 @inject AdminSession Admin
+@inject AdminServiceFactory Factory
 @inject NavigationManager Nav
 
 @* Home della sezione Admin: per ora un solo pulsante, gli altri arriveranno *@
@@ -47,12 +49,66 @@
             </svg>
             <span>Log</span>
         </a>
+
+        @* Setup: azione diretta, non una pagina. Inizializza il database via AdminServiceClient.InitAsync() *@
+        <button type="button" class="dashboard-card" @onclick="Setup_Click" disabled="@_setupInCorso">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"
+                 width="72" height="72">
+                <ellipse cx="12" cy="5.5" rx="7" ry="2.75" />
+                <path d="M5 5.5v6c0 1.5 3.1 2.75 7 2.75s7-1.25 7-2.75v-6" />
+                <path d="M5 11.5v6c0 1.5 3.1 2.75 7 2.75" />
+                <path d="M19 12.8v1.9M19 19.8v1.9" />
+                <path d="M15.9 14.6l1.35.8M20.75 17.4l1.35.8" />
+                <path d="M15.9 19.9l1.35-.8M20.75 17.1l1.35-.8" />
+                <circle cx="19" cy="17.25" r="1.9" />
+            </svg>
+            <span>@(_setupInCorso ? "Inizializzazione…" : "Setup")</span>
+        </button>
     </div>
 </div>
 
+<EmmaDialogs @ref="_dialogs" />
+
 @code {
+    private EmmaDialogs _dialogs = default!;
+    private bool _setupInCorso;
+
     protected override void OnInitialized()
     {
         if (!Admin.IsAuthenticated) Nav.NavigateTo("/admin");
+    }
+
+    /// <summary>
+    /// Inizializza il database sul server (POST /api/database/init).
+    /// Operazione delicata: si chiede sempre conferma esplicita prima di chiamare l'endpoint.
+    /// </summary>
+    private async Task Setup_Click()
+    {
+        if (_setupInCorso) return;
+
+        var conferma = await _dialogs.ConfermaAsync(
+            "Inizializzare il database? L'operazione crea/aggiorna le strutture sul server.");
+
+        if (!conferma) return;
+
+        try
+        {
+            _setupInCorso = true;
+            StateHasChanged();
+
+            await Factory.Admin().InitAsync();
+
+            await _dialogs.InfoAsync("Inizializzazione del database completata.");
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _setupInCorso = false;
+            StateHasChanged();
+        }
     }
 }

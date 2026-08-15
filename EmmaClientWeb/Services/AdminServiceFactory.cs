@@ -29,4 +29,8 @@ public class AdminServiceFactory
 
     public LogServiceClient Logs()
         => new LogServiceClient(ServerUrl, _session.User, _session.Password);
+
+    /// <summary>Operazioni di manutenzione: setup/inizializzazione del database.</summary>
+    public AdminServiceClient Admin()
+        => new AdminServiceClient(ServerUrl, _session.User, _session.Password);
 }

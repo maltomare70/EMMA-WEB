@@ -220,6 +220,24 @@ html, body {
     color: var(--emma-card-text);
 }
 
+/* Card che eseguono un'azione invece di navigare: <button> reso identico all'<a> */
+button.dashboard-card {
+    font: inherit;
+    padding: 0;
+    box-sizing: border-box;
+    color: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+button.dashboard-card:disabled {
+    cursor: default;
+    opacity: .6;
+    transform: none;
+    box-shadow: none;
+    background: #FFFFFF;
+}
+
 /* ---------------- Toolbar / Border pannello ---------------- */
 
 /* Border Background=#F9F9F9 BorderBrush=#E0E0E0 CornerRadius=6 Padding=12 */
