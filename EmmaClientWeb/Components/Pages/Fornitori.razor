@@ -26,7 +26,6 @@
         <table class="emma-grid">
             <thead>
                 <tr>
-                    <th style="width:60px">ID</th>
                     <th style="width:40%">Descrizione</th>
                     <th style="width:30%">Riferimento</th>
                     <th style="width:80px">Score</th>
@@ -45,7 +44,6 @@
                     @foreach (var f in ListaFornitori)
                     {
                         <tr @key="f" class="@RowCss(f)" @onclick="() => _selezionato = f">
-                            <td>@(f.id == 0 ? "" : f.id.ToString())</td>
                             <td>
                                 <input class="cell-edit" value="@f.descrizione"
                                        @onchange="e => SetDescrizione(f, e.Value?.ToString())" />

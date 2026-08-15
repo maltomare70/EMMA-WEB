@@ -40,7 +40,6 @@
         <table class="emma-grid">
             <thead>
                 <tr>
-                    <th style="width:60px">ID</th>
                     <th style="width:18%">Codice</th>
                     <th style="width:22%">Descrizione</th>
                     <th style="width:16%">Riferimento Cod.</th>
@@ -64,7 +63,6 @@
                     @foreach (var a in ListaArticoli)
                     {
                         <tr @key="a" class="@RowCss(a)" @onclick="() => _selezionato = a">
-                            <td>@(a.id == 0 ? "" : a.id.ToString())</td>
                             <td><input class="cell-edit" value="@a.codice" @onchange="e => a.codice = e.Value?.ToString() ?? string.Empty" /></td>
                             <td><input class="cell-edit" value="@a.descrizione" @onchange="e => a.descrizione = e.Value?.ToString() ?? string.Empty" /></td>
                             <td><input class="cell-edit" value="@a.rifcodice" @onchange="e => a.rifcodice = e.Value?.ToString() ?? string.Empty" /></td>
