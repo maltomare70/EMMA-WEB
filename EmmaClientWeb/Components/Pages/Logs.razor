@@ -64,7 +64,7 @@
     private List<EmmaLog> ListaLog { get; set; } = new();
     private bool _busy;
     private EmmaDialogs _dialogs = default!;
-    private Emma.Services.Services.LogService _logService = default!;
+    private Emma.Services.Services.LogServiceClient _logService = default!;
 
     protected override void OnInitialized()
     {

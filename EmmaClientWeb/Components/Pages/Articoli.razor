@@ -90,8 +90,8 @@
     private EmmaArticoli? _selezionato;
     private bool _busy;
     private EmmaDialogs _dialogs = default!;
-    private IArticoliService _articoliService = default!;
-    private IFornitoriService _fornitoriService = default!;
+    private IArticoliServiceClient _articoliService = default!;
+    private IFornitoriServiceClient _fornitoriService = default!;
 
     private int ModificheInSospeso => ListaArticoli.Count(a => a.id == 0 || a.IsDirty);
 

@@ -71,7 +71,7 @@
     private EmmaFornitori? _selezionato;
     private bool _busy;
     private EmmaDialogs _dialogs = default!;
-    private IFornitoriService _fornitoriService = default!;
+    private IFornitoriServiceClient _fornitoriService = default!;
 
     private int ModificheInSospeso => ListaFornitori.Count(f => f.id == 0 || f.IsDirty);
 

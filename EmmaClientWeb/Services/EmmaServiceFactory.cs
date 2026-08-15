@@ -22,24 +22,24 @@ public class EmmaServiceFactory
 
     public string ServerUrl => _session.ServerUrlOverride ?? _config.ServerUrl;
 
-    public ILoginService Login(string user, string password)
-        => new LoginService(ServerUrl, user, password);
+    public ILoginServiceClient Login(string user, string password)
+        => new LoginServiceClient(ServerUrl, user, password);
 
-    public IFornitoriService Fornitori()
-        => new FornitoriService(ServerUrl, _session.User, _session.Password);
+    public IFornitoriServiceClient Fornitori()
+        => new FornitoriServiceClient(ServerUrl, _session.User, _session.Password);
 
-    public IArticoliService Articoli()
-        => new ArticoliService(ServerUrl, _session.User, _session.Password);
+    public IArticoliServiceClient Articoli()
+        => new ArticoliServiceClient(ServerUrl, _session.User, _session.Password);
 
-    public IDocService Docs()
-        => new DocService(ServerUrl, _session.User, _session.Password);
+    public IDocServiceClient Docs()
+        => new DocServiceClient(ServerUrl, _session.User, _session.Password);
 
-    public IConciliazioneClientService Conciliazione()
-        => new ConciliazionClientService(ServerUrl, _session.User, _session.Password);
+    public IConciliazioneServiceClient Conciliazione()
+        => new ConciliazioneServiceClient(ServerUrl, _session.User, _session.Password);
 
-    public LogService Logs()
-        => new LogService(ServerUrl, _session.User, _session.Password);
+    public LogServiceClient Logs()
+        => new LogServiceClient(ServerUrl, _session.User, _session.Password);
 
-    public IUserService Users()
-        => new UserService(ServerUrl, _session.User, _session.Password);
+    public IUserServiceClient Users()
+        => new UserServiceClient(ServerUrl, _session.User, _session.Password);
 }

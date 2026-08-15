@@ -7,7 +7,7 @@
     <div class="emma-titlebar">
         @if (IsLoginPage)
         {
-            <span class="emma-window-title">Emma Client 1.0.4</span>
+            <span class="emma-window-title">Emma Client</span>
         }
         else
         {
@@ -68,7 +68,7 @@
     // Titolo della "Window" corrente, come i Title delle Window Avalonia
     private string Title => Path switch
     {
-        "dashboard" => "Emma Client 1.0.4",
+        "dashboard" => "Emma Client",
         "documenti/carica" => "Caricamento Documenti",
         "documenti" => "Visualizzatore Documenti",
         "fornitori" => "Fornitori",
@@ -76,7 +76,7 @@
         "conciliazione" => "Conciliazione Bolle / Fatture",
         "log" => "Log",
         "password" => "Cambio Password",
-        _ => "Emma Client 1.0.4"
+        _ => "Emma Client"
     };
 
     private bool IsLoginPage => Path.Length == 0 || Path == "login";

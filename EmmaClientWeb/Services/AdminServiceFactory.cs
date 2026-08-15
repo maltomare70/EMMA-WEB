@@ -24,9 +24,9 @@ public class AdminServiceFactory
     public ITenantServiceClient Tenants()
         => new TenantServiceClient(ServerUrl, _session.User, _session.Password);
 
-    public IUserService Users()
-        => new UserService(ServerUrl, _session.User, _session.Password);
+    public IUserServiceClient Users()
+        => new UserServiceClient(ServerUrl, _session.User, _session.Password);
 
-    public LogService Logs()
-        => new LogService(ServerUrl, _session.User, _session.Password);
+    public LogServiceClient Logs()
+        => new LogServiceClient(ServerUrl, _session.User, _session.Password);
 }
