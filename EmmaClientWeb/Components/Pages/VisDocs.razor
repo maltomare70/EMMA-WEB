@@ -111,12 +111,12 @@
                             </td>
                             <td><strong>@m.Fornitore</strong></td>
                             <td @onclick:stopPropagation="true">
-                                <select class="cell-edit" value="@m.TipDocumento.Substring(0,1)"
+                                <select class="cell-edit" value="@m.TipDocumento?.Substring(0,1)"
                                         @onchange="e => CambiaTipoDocumento(m, e.Value?.ToString())"
                                         disabled="@_busy">
                                     @foreach (var tipo in TipiDocumentoModificabili)
                                     {
-                                        <option value="@tipo.Substring(0, 1)">@tipo.Substring(0, 1)</option>
+                                        <option value="@tipo.Substring(0, 1)">@tipo</option>
                                     }
                                     @* valore non presente in lista: lo mostriamo comunque per non perderlo *@
                             @*         @if (!string.IsNullOrWhiteSpace(m.TipDocumento)
