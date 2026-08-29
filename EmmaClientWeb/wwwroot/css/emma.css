@@ -649,6 +649,31 @@ table.emma-grid input.cell-edit[readonly] {
     gap: 20px;
 }
 
+/* ---------------- Popup righe di conciliazione (VisDocs) ---------------- */
+
+.conc-window {
+    width: min(900px, 94vw);
+    max-width: min(900px, 94vw);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.conc-body {
+    padding: 15px;
+    overflow: auto;
+    flex: 1 1 auto;
+}
+
+.conc-body table.emma-grid {
+    width: 100%;
+}
+
+.conc-actions {
+    justify-content: flex-end;
+    padding: 0 15px 15px 15px;
+}
+
 /* ---------------- Finestra modale con form (es. Tenant) ---------------- */
 
 /* Come .dialog-window ma dimensionata per un form invece che per un messaggio */

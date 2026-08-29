@@ -1,4 +1,4 @@
-@page "/documenti"
+﻿@page "/documenti"
 @layout MainLayout
 @using System.Text
 @using System.Globalization
@@ -166,13 +166,14 @@
                                                     <th style="width:150px">Imponibile</th>
                                                     <th style="width:100px" class="cell-center">IVA</th>
                                                     <th style="width:150px">Totale</th>
+                                                    <th style="width:110px"></th>
                                                     <th style="width:100px"></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 @if (!m.Dettagli.Any())
                                                 {
-                                                    <tr><td colspan="8" class="empty-state">Nessuna riga di dettaglio.</td></tr>
+                                                    <tr><td colspan="9" class="empty-state">Nessuna riga di dettaglio.</td></tr>
                                                 }
                                                 else
                                                 {
@@ -194,6 +195,13 @@
                                                             <td class="cell-center">@r.IVA</td>
                                                             <td><input class="cell-edit cell-right" type="number" step="0.01" value="@Inv(r.Totale)"
                                                                        @onchange="e => AggiornaCampo(r, () => r.Totale = ToDecimal(e.Value))" /></td>
+                                                            <td class="cell-center">
+                                                                <button class="btn btn-grey btn-sm"
+                                                                        @onclick="() => Conciliazione_Click(m, r)"
+                                                                        disabled="@(_busy || !(r.RigheDocumentoConciliazione?.Any() ?? false))">
+                                                                    Conciliazione
+                                                                </button>
+                                                            </td>
                                                             <td class="cell-center">
                                                                 @* TestoBottone: "Aggiungi" (verde) se IdRiga vuoto, altrimenti "Elimina" (rosso) *@
                                                                 <button class="btn btn-sm @(r.TestoBottone == "Elimina" ? "btn-red" : "btn-green")"
@@ -221,6 +229,56 @@
     </div>
 </div>
 
+@* Popup con le righe di conciliazione della riga di dettaglio selezionata *@
+@if (_conciliazioneVisibile)
+{
+    <div class="dialog-overlay" @onclick="ChiudiConciliazione">
+        <div class="dialog-window conc-window" @onclick:stopPropagation="true">
+            <div class="win-title">Conciliazione riga &mdash; @_conciliazioneTitolo</div>
+
+            <div class="conc-body">
+                <table class="emma-grid">
+                    <thead>
+                        <tr>
+                            <th style="width:130px">Q.tà</th>
+                            <th style="width:130px">Q.tà Conciliata</th>
+                            <th style="width:130px">Delta</th>
+                            <th style="width:90px" class="cell-center">Flag</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!_righeConciliazione.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="empty-state">Nessun dato di conciliazione per questa riga.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var rc in _righeConciliazione)
+                            {
+                                <tr @key="rc">
+                                    <td class="cell-right">@rc.Qta</td>
+                                    <td class="cell-right">@rc.Qta_conc</td>
+                                    <td class="cell-right">@rc.Delta</td>
+                                    <td class="cell-center">
+                                        @* Flag di conciliazione: 0 = non conciliata, diverso da 0 = conciliata (sola lettura) *@
+                                        <input type="checkbox" checked="@(rc.Flag != 0)" disabled />
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="dialog-actions conc-actions">
+                <button class="btn btn-grey" @onclick="ChiudiConciliazione">❌ Chiudi</button>
+            </div>
+        </div>
+    </div>
+}
+
 <PdfViewer @ref="_pdfViewer" />
 <EmmaDialogs @ref="_dialogs" />
 
@@ -243,12 +301,20 @@
     private string _fornitoreDescrizione = string.Empty;
 
     private bool _busy;
+
+    // Popup righe di conciliazione
+    private bool _conciliazioneVisibile;
+    private string _conciliazioneTitolo = string.Empty;
+    private List<RigheDocumentoConciliazione> _righeConciliazione = new();
+
     private EmmaDialogs _dialogs = default!;
     private PdfViewer _pdfViewer = default!;
 
     private IDocServiceClient _docService = default!;
     private IFornitoriServiceClient _fornitoriService = default!;
     private IArticoliServiceClient _articoliService = default!;
+    private IConciliazioneServiceClient _conciliazioneServiceClient = default!;
+
 
     protected override void OnInitialized()
     {
@@ -257,6 +323,7 @@
         _docService = Factory.Docs();
         _fornitoriService = Factory.Fornitori();
         _articoliService = Factory.Articoli();
+        _conciliazioneServiceClient = Factory.Conciliazione();
     }
 
     // Replica di VisDocForms.Window_OnOpened (dopo il primo render, così i @ref sono pronti)
@@ -303,7 +370,7 @@
     {
         if (string.IsNullOrWhiteSpace(nuovoTipo)) return;
 
-          if (!await _dialogs.ConfermaAsync()) return;
+        if (!await _dialogs.ConfermaAsync()) return;
 
         try
         {
@@ -313,7 +380,7 @@
             await _docService.CambioTipo(master);
 
 
-            
+
         }
         catch (Exception ex)
         {
@@ -321,9 +388,9 @@
         }
         finally
         {
-           
+
         }
-       
+
     }
 
     /// <summary>Replica di CaricaDati() — costruisce EmmaDocFilters dai combo.</summary>
@@ -340,7 +407,7 @@
     }
 
     /// <summary>Replica di LoadDataGridData(List&lt;EmmaDoc&gt;)</summary>
-    private void LoadDataGridData(List<EmmaDoc>? docs)
+    private async Task LoadDataGridData(List<EmmaDoc>? docs)
     {
         if (docs is null) return;
 
@@ -362,9 +429,12 @@
                 Allegato = emmaDoc?.allegato
             };
 
+            List<RigheDocumentoConciliazione>? righeDocumentoConciliazione = null;
             var dettagli = new ObservableCollection<RigheDocumento>();
             foreach (var articolo in doc.Articoli)
             {
+                if ( righeDocumentoConciliazione is null) righeDocumentoConciliazione = await LoadRigheDocumentoConciliazione(articolo.Id_Master);
+
                 dettagli.Add(new RigheDocumento
                 {
                     IdRiga = articolo.Id_Riga,
@@ -375,7 +445,8 @@
                     IVA = articolo.Iva,
                     Imponibile = articolo.Imponibile,
                     Totale = articolo.Totale,
-                    UnitaMisura = articolo.UnitaMisura
+                    UnitaMisura = articolo.UnitaMisura,
+                    RigheDocumentoConciliazione = righeDocumentoConciliazione.Where(x => x.IdRiga?.ToLower() == articolo.Id_Riga?.ToLower()).ToList()
                 });
             }
 
@@ -392,13 +463,37 @@
         _espanso = null;
     }
 
+
+    private async Task<List<RigheDocumentoConciliazione>> LoadRigheDocumentoConciliazione(string idMaster)
+    {
+        var items = await _conciliazioneServiceClient.GetRigheConciliazioneAsync(idMaster);
+        if (items is null || items.Count == 0) return new List<RigheDocumentoConciliazione>();
+
+        List<RigheDocumentoConciliazione> righe = new List<RigheDocumentoConciliazione>();
+        items.ForEach(x =>
+        {
+            righe.Add(new RigheDocumentoConciliazione
+            {
+                IdMaster = x.id_master,
+                IdRiga = x.id_riga,
+                Qta = x.qta,
+                Qta_conc = x.qta_canc,
+                Delta = x.delta,
+                Flag = x.flag                
+            });
+        });
+
+        return righe;
+    }
+
+
     /// <summary>Replica di Button_OnClick ("Mostra Documenti ...")</summary>
     private async Task MostraDocumenti_Click()
     {
         try
         {
             _busy = true;
-            LoadDataGridData(await CaricaDati());
+            await LoadDataGridData(await CaricaDati());
         }
         catch (Exception ex)
         {
@@ -419,7 +514,7 @@
         {
             _busy = true;
             await _docService.CambioStato(master);
-            LoadDataGridData(await CaricaDati());
+            await LoadDataGridData(await CaricaDati());
         }
         catch (Exception ex)
         {
@@ -440,7 +535,7 @@
         {
             _busy = true;
             await _docService.CancellaDocumento(master);
-            LoadDataGridData(await CaricaDati());
+            await LoadDataGridData(await CaricaDati());
         }
         catch (Exception ex)
         {
@@ -474,7 +569,7 @@
                 await _docService.CambioStato(master);
             }
 
-            LoadDataGridData(await CaricaDati());
+            await LoadDataGridData(await CaricaDati());
         }
         catch (Exception ex)
         {
@@ -559,7 +654,7 @@
                 if (ok)
                 {
                     // L'API assegna un nuovo Guid: ricarichiamo per allinearci
-                    LoadDataGridData(await CaricaDati());
+                   await LoadDataGridData(await CaricaDati());
                 }
                 else
                 {
@@ -588,6 +683,44 @@
         {
             _busy = false;
         }
+    }
+
+    /// <summary>
+    /// Apre la popup con la griglia delle righe di conciliazione (RigheDocumentoConciliazione)
+    /// associate alla riga di dettaglio selezionata. Se la riga è già salvata i dati vengono
+    /// riletti dall'API, altrimenti si usa quanto già presente in memoria.
+    /// </summary>
+    private async Task Conciliazione_Click(MasterDocumento master, RigheDocumento riga)
+    {
+        try
+        {
+            _busy = true;
+
+            var righe = riga.RigheDocumentoConciliazione?.ToList() ?? new List<RigheDocumentoConciliazione>();
+
+            if (!string.IsNullOrWhiteSpace(riga.IdRiga))
+            {
+                riga.RigheDocumentoConciliazione = riga.RigheDocumentoConciliazione ?? new List<RigheDocumentoConciliazione>();
+            }
+
+            _righeConciliazione = righe;
+            _conciliazioneTitolo = $"{master.NumeroDocumento} / {riga.CodiceArticolo} - {riga.DescrizioneArticolo}";
+            _conciliazioneVisibile = true;
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void ChiudiConciliazione()
+    {
+        _conciliazioneVisibile = false;
+        _righeConciliazione = new List<RigheDocumentoConciliazione>();
     }
 
     /// <summary>Replica di ExportButton_OnClick — genera il CSV e lo fa scaricare dal browser.</summary>
