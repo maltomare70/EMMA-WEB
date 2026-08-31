@@ -1,0 +1,848 @@
+﻿@page "/conciliazione-ordini"
+@layout MainLayout
+@using System.Globalization
+@using EmmaServer.Entities.Dtos
+@inject UserSession Session
+@inject EmmaServiceFactory Factory
+@inject NavigationManager Nav
+
+@* Conciliazione Bolle / Fatture - SOLO GUI e chiamate di caricamento dati.
+   La logica di conciliazione va implementata in Concilia_Click(). *@
+
+<div class="emma-page @(_busy ? "busy" : "")">
+
+    <!-- Border toolbar filtri -->
+    <div class="emma-toolbar">
+        <div class="emma-toolbar-left">
+
+            <div class="emma-field">
+                <label>Fornitore:</label>
+                <select class="emma-select" style="width:400px" @bind="_fornitoreDescrizione" disabled="@_busy">
+                    <option value="">Seleziona Fornitore...</option>
+                    @foreach (var f in _fornitori)
+                    {
+                        <option value="@f.descrizione">@f.descrizione</option>
+                    }
+                </select>
+            </div>
+
+            <div class="emma-separator"></div>
+
+            <div class="emma-field">
+                <label>Da Data:</label>
+                <input type="date" class="emma-input" style="width:170px" @bind="_daData" disabled="@_busy" />
+            </div>
+
+            <div class="emma-field">
+                <label>A Data:</label>
+                <input type="date" class="emma-input" style="width:170px" @bind="_aData" disabled="@_busy" />
+            </div>
+
+            <div class="emma-separator"></div>
+
+            <button class="btn btn-blue" @onclick="CaricaDati_Click" disabled="@_busy">
+                <span>🔄</span><span>Carica Dati</span>
+            </button>
+
+            <div class="emma-separator"></div>
+
+            <button class="btn btn-green" @onclick="ProponiConciliazione_Click" disabled="@(_busy)">
+                <span>🔗</span><span>Concilia</span>
+            </button>
+
+            <div class="emma-separator"></div>
+
+            <button class="btn btn-blue" @onclick="Concilia_Click"
+                    disabled="@(_busy)">
+                <span>💾</span><span>Salva</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Due grid identiche affiancate -->
+    <div class="conc-split">
+
+        <!-- ============ GRID SINISTRA: ORDINI ============ -->
+        <div class="conc-pane">
+            <div class="conc-pane-title">
+                <span>Ordini</span>
+                <span class="conc-title-right">
+                    <button class="btn-mini" type="button"
+                            @onclick="() => ToggleTuttiGruppi(_bolleAperte, Bolle)"
+                            disabled="@(_busy || Bolle.Count == 0)">
+                        @(TuttiAperti(_bolleAperte, Bolle) ? "Comprimi tutto" : "Espandi tutto")
+                    </button>
+                    <span class="conc-badge">@_bolleSelezionate / @Bolle.Count selezionate</span>
+                </span>
+            </div>
+
+            <div class="emma-grid-wrapper">
+                <table class="emma-grid">
+                    <thead>
+                        <tr>
+                            <th style="width:52px" class="cell-center">
+                                <input type="checkbox"
+                                       checked="@(Bolle.Count > 0 && _bolleSelezionate == Bolle.Count)"
+                                       @onchange="e => SelezionaTutto(Bolle, e.Value is true)"
+                                       disabled="@(_busy || Bolle.Count == 0)" />
+                                <div class="conc-th-sub"></div>
+                            </th>
+                            <th style="min-width:150px">Fornitore</th>
+                            <th style="width:130px">Numero Documento</th>
+                            <th style="width:115px">Data Documento</th>
+                            <th style="width:130px">Codice Articolo</th>
+                            <th style="min-width:180px">Descrizione Articolo</th>
+                            <th style="width:90px" class="cell-right">Quantità</th>
+                            <th style="width:90px" class="cell-right">Qtà Conc.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Bolle.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="8" class="empty-state">
+                                    Imposta i filtri e premi "Carica Dati" per caricare le bolle.
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var gruppo in RaggruppaPerFornitore(Bolle))
+                            {
+                                var g = gruppo;
+                                var aperto = _bolleAperte.Fornitori.Contains(g.Key);
+                                var totali = g.Count();
+                                var selezionate = g.Count(x => x.Selezionato);
+
+                                <tr @key="@("f-" + g.Key)" class="group-row @(aperto ? "open" : "")">
+                                    <td class="cell-center">
+                                        <input type="checkbox"
+                                               checked="@(selezionate == totali)"
+                                               @onchange="e => SelezionaGruppo(g, e.Value is true)"
+                                               disabled="@_busy" />
+                                    </td>
+                                    <td colspan="5" @onclick="() => ToggleFornitore(_bolleAperte, g.Key)">
+                                        <span class="expander">@(aperto ? "▼" : "►")</span>
+                                        <span class="group-title">@NomeGruppo(g.Key)</span>
+                                        <span class="group-count">
+                                            @NumeroDocumenti(g) documenti · @totali righe · @selezionate selezionate
+                                        </span>
+                                    </td>
+                                    <td class="cell-right"></td>
+                                    <td class="cell-right"></td>
+                                </tr>
+
+                                if (aperto)
+                                {
+                                    foreach (var documento in RaggruppaPerDocumento(g))
+                                    {
+                                        var d = documento;
+                                        var chiaveDoc = ChiaveDocumento(g.Key, d.Key);
+                                        var docAperto = _bolleAperte.Documenti.Contains(chiaveDoc);
+                                        var docTotali = d.Count();
+                                        var docSelezionate = d.Count(x => x.Selezionato);
+
+                                        <tr @key="@("d-" + chiaveDoc)" class="doc-row @(docAperto ? "open" : "")">
+                                            <td class="cell-center">
+                                                <input type="checkbox"
+                                                       checked="@(docSelezionate == docTotali)"
+                                                       @onchange="e => SelezionaGruppo(d, e.Value is true)"
+                                                       disabled="@_busy" />
+                                            </td>
+                                            <td class="cell-child"></td>
+                                            <td @onclick="() => ToggleDocumento(_bolleAperte, chiaveDoc)">
+                                                <span class="expander">@(docAperto ? "▼" : "►")</span>
+                                                <span class="group-title">@NomeDocumento(d.Key)</span>
+                                            </td>
+                                            <td @onclick="() => ToggleDocumento(_bolleAperte, chiaveDoc)">
+                                                @d.First().DataDocumento
+                                            </td>
+                                            <td colspan="2" @onclick="() => ToggleDocumento(_bolleAperte, chiaveDoc)">
+                                                <span class="group-count">
+                                                    @docTotali righe · @docSelezionate selezionate
+                                                </span>
+                                            </td>
+                                            <td class="cell-right"></td>
+                                            <td class="cell-right"></td>
+                                        </tr>
+
+                                        if (docAperto)
+                                        {
+                                            foreach (var riga in d)
+                                            {
+                                                var r = riga;
+                                                <tr @key="r" class="child-row @(r.Selezionato ? "selected" : "")">
+                                                    <td class="cell-center">
+                                                        <input type="checkbox" checked="@r.Selezionato"
+                                                               @onchange="e => CambiaSelezione(r, e.Value is true)"
+                                                               disabled="@_busy" />
+                                                    </td>
+                                                    <td class="cell-child"></td>
+                                                    <td class="cell-child"></td>
+                                                    <td class="cell-child"></td>
+                                                    <td>@r.CodiceArticolo</td>
+                                                    <td>@r.DescrizioneArticolo</td>
+                                                    <td class="cell-right">@(Qta(r.Qta))</td>
+                                                    <td class="cell-right">@(Qta(r.Qta_Conc))</td>
+                                                </tr>
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ============ GRID DESTRA: Bolle / DDT ============ -->
+        <div class="conc-pane">
+            <div class="conc-pane-title">
+                <span>Bolle / DDT</span>
+                <span class="conc-title-right">
+                    <button class="btn-mini" type="button"
+                            @onclick="() => ToggleTuttiGruppi(_fattureAperte, Fatture)"
+                            disabled="@(_busy || Fatture.Count == 0)">
+                        @(TuttiAperti(_fattureAperte, Fatture) ? "Comprimi tutto" : "Espandi tutto")
+                    </button>
+                    <span class="conc-badge">@_fattureSelezionate / @Fatture.Count selezionate</span>
+                </span>
+            </div>
+
+            <div class="emma-grid-wrapper">
+                <table class="emma-grid">
+                    <thead>
+                        <tr>
+                            <th style="width:52px" class="cell-center">
+                                <input type="checkbox"
+                                       checked="@(Fatture.Count > 0 && _fattureSelezionate == Fatture.Count)"
+                                       @onchange="e => SelezionaTutto(Fatture, e.Value is true)"
+                                       disabled="@(_busy || Fatture.Count == 0)" />
+                                <div class="conc-th-sub"></div>
+                            </th>
+                            <th style="min-width:150px">Fornitore</th>
+                            <th style="width:130px">Numero Documento</th>
+                            <th style="width:115px">Data Documento</th>
+                            <th style="width:130px">Codice Articolo</th>
+                            <th style="min-width:180px">Descrizione Articolo</th>
+                            <th style="width:90px" class="cell-right">Quantità</th>
+                            <th style="width:90px" class="cell-right">Qtà Conc.</th>
+                            <th style="width:110px">Stato</th>
+                            <th style="min-width:160px">Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Fatture.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="10" class="empty-state">
+                                    Imposta i filtri e premi "Carica Dati" per caricare le fatture.
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var gruppo in RaggruppaPerFornitore(Fatture))
+                            {
+                                var g = gruppo;
+                                var aperto = _fattureAperte.Fornitori.Contains(g.Key);
+                                var totali = g.Count();
+                                var selezionate = g.Count(x => x.Selezionato);
+
+                                <tr @key="@("f-" + g.Key)" class="group-row @(aperto ? "open" : "")">
+                                    <td class="cell-center">
+                                        <input type="checkbox"
+                                               checked="@(selezionate == totali)"
+                                               @onchange="e => SelezionaGruppo(g, e.Value is true)"
+                                               disabled="@_busy" />
+                                    </td>
+                                    <td colspan="5" @onclick="() => ToggleFornitore(_fattureAperte, g.Key)">
+                                        <span class="expander">@(aperto ? "▼" : "►")</span>
+                                        <span class="group-title">@NomeGruppo(g.Key)</span>
+                                        <span class="group-count">
+                                            @NumeroDocumenti(g) documenti · @totali righe · @selezionate selezionate
+                                        </span>
+                                    </td>
+                                    <td class="cell-right"></td>
+                                    <td class="cell-right"></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+
+                                if (aperto)
+                                {
+                                    foreach (var documento in RaggruppaPerDocumento(g))
+                                    {
+                                        var d = documento;
+                                        var chiaveDoc = ChiaveDocumento(g.Key, d.Key);
+                                        var docAperto = _fattureAperte.Documenti.Contains(chiaveDoc);
+                                        var docTotali = d.Count();
+                                        var docSelezionate = d.Count(x => x.Selezionato);
+
+                                        <tr @key="@("d-" + chiaveDoc)" class="doc-row @(docAperto ? "open" : "")">
+                                            <td class="cell-center">
+                                                <input type="checkbox"
+                                                       checked="@(docSelezionate == docTotali)"
+                                                       @onchange="e => SelezionaGruppo(d, e.Value is true)"
+                                                       disabled="@_busy" />
+                                            </td>
+                                            <td class="cell-child"></td>
+                                            <td @onclick="() => ToggleDocumento(_fattureAperte, chiaveDoc)">
+                                                <span class="expander">@(docAperto ? "▼" : "►")</span>
+                                                <span class="group-title">@NomeDocumento(d.Key)</span>
+                                            </td>
+                                            <td @onclick="() => ToggleDocumento(_fattureAperte, chiaveDoc)">
+                                                @d.First().DataDocumento
+                                            </td>
+                                            <td colspan="2" @onclick="() => ToggleDocumento(_fattureAperte, chiaveDoc)">
+                                                <span class="group-count">
+                                                    @docTotali righe · @docSelezionate selezionate
+                                                </span>
+                                            </td>
+                                            <td class="cell-right"></td>
+                                            <td class="cell-right"></td>
+                                            <td></td>
+                                            <td></td>
+                                        </tr>
+
+                                        if (docAperto)
+                                        {
+                                            foreach (var riga in d)
+                                            {
+                                                var r = riga;
+                                                <tr @key="r" class="child-row @(r.Selezionato ? "selected" : "")">
+                                                    <td class="cell-center">
+                                                        <input type="checkbox" checked="@r.Selezionato"
+                                                               @onchange="e => CambiaSelezione(r, e.Value is true)"
+                                                               disabled="@_busy" />
+                                                    </td>
+                                                    <td class="cell-child"></td>
+                                                    <td class="cell-child"></td>
+                                                    <td class="cell-child"></td>
+                                                    <td>@r.CodiceArticolo</td>
+                                                    <td>@r.DescrizioneArticolo</td>
+                                                    <td class="cell-right">@(Qta(r.Qta))</td>
+                                                    <td class="cell-right">@(Qta(r.Qta_Conc))</td>
+                                                    <td>@r.Stato</td>
+                                                    <td>
+                                                        <input type="text" class="cell-edit"
+                                                               value="@r.Note"
+                                                               @onchange="e => CambiaNota(r, e.Value?.ToString())"
+                                                               disabled="@_busy" />
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    // Indici dell'array restituito da ArticoliServiceManager.GetTipodocs()
+    // 0 Tutti - 1 Ordine - 2 DDT - 3 Fattura Accompagnatoria - 4 Fattura - 5 Nota di Accredito
+    private const int TipoDocOrdini = 1;
+    private const int TipoDocDdt = 2;
+
+
+    /// <summary>Riga "piatta" mostrata nelle grid: dati di testata + riga articolo.</summary>
+
+
+    private List<RigaConciliazione> Bolle { get; set; } = new();
+    private List<RigaConciliazione> Fatture { get; set; } = new();
+
+    private int _bolleSelezionate;
+    private int _fattureSelezionate;
+
+    /// <summary>Stato di apertura del drilldown a due livelli: fornitore → documento.</summary>
+    private sealed class StatoGruppi
+    {
+        public HashSet<string> Fornitori { get; } = new();
+        public HashSet<string> Documenti { get; } = new();
+
+        public void Clear()
+        {
+            Fornitori.Clear();
+            Documenti.Clear();
+        }
+    }
+
+    private readonly StatoGruppi _bolleAperte = new();
+    private readonly StatoGruppi _fattureAperte = new();
+
+    private List<EmmaFornitori> _fornitori = new();
+    private string _fornitoreDescrizione = string.Empty;
+    private DateTime? _daData = DateTime.Today.AddMonths(-1);
+    private DateTime? _aData = DateTime.Today;
+
+    private bool _busy;
+    private EmmaDialogs _dialogs = default!;
+
+    private IDocServiceClient _docService = default!;
+    private IFornitoriServiceClient _fornitoriService = default!;
+    private IConciliazioneServiceClient _conciliazioneService = default!;
+
+    protected override void OnInitialized()
+    {
+        if (!Session.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
+
+        _docService = Factory.Docs();
+        _fornitoriService = Factory.Fornitori();
+        _conciliazioneService = Factory.Conciliazione();
+    }
+
+    /// <summary>Come in VisDocs: i fornitori si caricano dopo il primo render.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Session.IsAuthenticated) return;
+
+        try
+        {
+            _busy = true;
+            var fornitori = await _fornitoriService.GetFornitoriAsync();
+            _fornitori = fornitori.OrderBy(x => x.descrizione).ToList();
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private static string Qta(decimal v) => v.ToString("0.###", CultureInfo.CurrentCulture);
+
+    // ---------------- Caricamento dati ----------------
+
+    /// <summary>Pulsante "Carica Dati": popola entrambe le grid.</summary>
+    private async Task CaricaDati_Click()
+    {
+        if (_daData.HasValue && _aData.HasValue && _daData > _aData)
+        {
+            await _dialogs.ErroreAsync("La data iniziale non può essere successiva alla data finale.");
+            return;
+        }
+
+        try
+        {
+            _busy = true;
+
+            List<EmmaConciliaRighe> _righe = await _conciliazioneService.GetAllAsync();
+
+            // Grid di sinistra: DDT / bolle
+            Bolle = await ToRighe(await GetDocs(TipoDocOrdini), _righe);
+
+            // Grid di destra: fatture + fatture accompagnatorie
+            var fatture = await GetDocs(TipoDocDdt);            
+            Fatture = await ToRighe(fatture, _righe);
+
+            InizializzaGruppi();
+            RicalcolaSelezionate();
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Chiamata all'API documenti (POST /api/v1/doc) per un singolo tipo documento.</summary>
+    private async Task<List<EmmaDoc>> GetDocs(int tipoDoc)
+    {
+        var filtri = new EmmaDocFilters
+        {
+            Fornitore = _fornitoreDescrizione ?? string.Empty,
+            TipoDoc = tipoDoc,
+            Stato = 0 // 0 = Aperto
+        };
+
+        var docs = await _docService.GetDocsAsync(filtri);
+        List<EmmaConciliaRighe> _righe = await _conciliazioneService.GetAllAsync();
+        return docs ?? new List<EmmaDoc>();
+    }
+
+    /// <summary>Appiattisce i documenti in righe articolo applicando il filtro date lato client.</summary>
+    private async Task<List<RigaConciliazione>> ToRighe(List<EmmaDoc> docs, List<EmmaConciliaRighe> _righe)
+    {
+        var risultato = new List<RigaConciliazione>();
+
+        foreach (var emmaDoc in docs)
+        {
+            var doc = emmaDoc?.ToDoc();
+            if (doc is null) continue;
+
+            var data = ParseData(doc.DataBolla);
+            if (!InIntervallo(data)) continue;
+
+            foreach (var articolo in doc.Articoli)
+            {
+                var rigaConciliazione = _righe.FirstOrDefault(x => x.id_riga == articolo.Id_Riga);
+                if (rigaConciliazione != null)
+                {
+                    risultato.Add(new RigaConciliazione
+                    {
+                        Selezionato = rigaConciliazione.flag == 0 ? false : true,
+                        IdMaster = doc.Id,
+                        IdRiga = articolo.Id_Riga,
+                        Fornitore = doc.Mittente,
+                        NumeroDocumento = doc.NumeroBolla,
+                        DataDocumento = doc.DataBolla,
+                        TipoDocumento = doc.TipoDocumento,
+                        CodiceArticolo = articolo.Codice,
+                        DescrizioneArticolo = articolo.Descrizione,
+                        UnitaMisura = articolo.UnitaMisura,
+                        Qta = articolo.Quantita,
+                        Qta_Conc = rigaConciliazione.qta_canc,
+                        Note = rigaConciliazione.note,
+                        Stato = rigaConciliazione.stato,
+                        Data = data
+                    });
+                }
+                else
+                {
+                    risultato.Add(new RigaConciliazione
+                    {
+                        Selezionato = false,
+                        IdMaster = doc.Id,
+                        IdRiga = articolo.Id_Riga,
+                        Fornitore = doc.Mittente,
+                        NumeroDocumento = doc.NumeroBolla,
+                        DataDocumento = doc.DataBolla,
+                        TipoDocumento = doc.TipoDocumento,
+                        CodiceArticolo = articolo.Codice,
+                        DescrizioneArticolo = articolo.Descrizione,
+                        UnitaMisura = articolo.UnitaMisura,
+                        Qta = articolo.Quantita,
+                        Qta_Conc = 0,
+                        Note = string.Empty,
+                        Stato = string.Empty,
+                        Data = data
+                    });
+                }
+            }
+        }
+
+        return risultato
+            .OrderBy(x => x.Data ?? DateTime.MaxValue)
+            .ThenBy(x => x.NumeroDocumento)
+            .ThenBy(x => x.CodiceArticolo)
+            .ToList();
+    }
+
+    /// <summary>Le date arrivano dall'API come "yyyy-MM-dd"</summary>
+    private static DateTime? ParseData(string? valore)
+    {
+        if (string.IsNullOrWhiteSpace(valore)) return null;
+
+        var formati = new[] { "yyyy-MM-dd"/* , "dd/MM/yyyy", "dd-MM-yyyy", "yyyy/MM/dd" */ };
+
+        if (DateTime.TryParseExact(valore, formati, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var d)) return d;
+
+        if (DateTime.TryParse(valore, CultureInfo.CurrentCulture,
+                DateTimeStyles.None, out var d2)) return d2;
+
+        return null;
+    }
+
+    /// <summary>Filtro Da Data / A Data lato client: EmmaDocFilters espone solo una data singola.</summary>
+    private bool InIntervallo(DateTime? data)
+    {
+        if (!_daData.HasValue && !_aData.HasValue) return true;
+        if (data is null) return false;
+
+        if (_daData.HasValue && data.Value.Date < _daData.Value.Date) return false;
+        if (_aData.HasValue && data.Value.Date > _aData.Value.Date) return false;
+
+        return true;
+    }
+
+    // ---------------- Selezione ----------------
+
+    private void CambiaSelezione(RigaConciliazione riga, bool valore)
+    {
+        riga.Selezionato = valore;
+        RicalcolaSelezionate();
+    }
+
+    private void CambiaNota(RigaConciliazione riga, string? valore)
+    {
+        riga.Note = valore ?? string.Empty;
+    }
+
+    private void SelezionaTutto(List<RigaConciliazione> righe, bool valore)
+    {
+        foreach (var r in righe) r.Selezionato = valore;
+        RicalcolaSelezionate();
+    }
+
+    private void RicalcolaSelezionate()
+    {
+        _bolleSelezionate = Bolle.Count(r => r.Selezionato);
+        _fattureSelezionate = Fatture.Count(r => r.Selezionato);
+    }
+
+    private void SelezionaGruppo(IEnumerable<RigaConciliazione> righe, bool valore)
+    {
+        foreach (var r in righe) r.Selezionato = valore;
+        RicalcolaSelezionate();
+    }
+
+    // ---------------- Raggruppamento fornitore → documento (drilldown) ----------------
+
+    /// <summary>Livello 1: righe raggruppate per fornitore, in ordine alfabetico.</summary>
+    private static List<IGrouping<string, RigaConciliazione>> RaggruppaPerFornitore(List<RigaConciliazione> righe)
+        => righe
+            .GroupBy(r => r.Fornitore ?? string.Empty)
+            .OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+    /// <summary>Livello 2: righe di un fornitore raggruppate per numero documento, in ordine di data.</summary>
+    private static List<IGrouping<string, RigaConciliazione>> RaggruppaPerDocumento(IEnumerable<RigaConciliazione> righe)
+        => righe
+            .GroupBy(r => r.NumeroDocumento ?? string.Empty)
+            .OrderBy(g => g.Min(x => x.Data) ?? DateTime.MaxValue)
+            .ThenBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+    /// <summary>Chiave univoca del gruppo documento (il numero può ripetersi tra fornitori diversi).</summary>
+    private static string ChiaveDocumento(string fornitore, string numeroDocumento)
+        => fornitore + "||" + numeroDocumento;
+
+    private static int NumeroDocumenti(IEnumerable<RigaConciliazione> righe)
+        => righe.Select(r => r.NumeroDocumento ?? string.Empty).Distinct().Count();
+
+    private static string NomeGruppo(string chiave)
+        => string.IsNullOrWhiteSpace(chiave) ? "(fornitore non indicato)" : chiave;
+
+    private static string NomeDocumento(string chiave)
+        => string.IsNullOrWhiteSpace(chiave) ? "(senza numero)" : chiave;
+
+    private void ToggleFornitore(StatoGruppi stato, string chiave)
+    {
+        if (!stato.Fornitori.Remove(chiave)) stato.Fornitori.Add(chiave);
+    }
+
+    private void ToggleDocumento(StatoGruppi stato, string chiave)
+    {
+        if (!stato.Documenti.Remove(chiave)) stato.Documenti.Add(chiave);
+    }
+
+    /// <summary>True se tutti i fornitori e tutti i documenti sono espansi.</summary>
+    private static bool TuttiAperti(StatoGruppi stato, List<RigaConciliazione> righe)
+    {
+        var fornitori = RaggruppaPerFornitore(righe);
+        if (fornitori.Count == 0) return false;
+
+        foreach (var f in fornitori)
+        {
+            if (!stato.Fornitori.Contains(f.Key)) return false;
+
+            foreach (var d in RaggruppaPerDocumento(f))
+                if (!stato.Documenti.Contains(ChiaveDocumento(f.Key, d.Key))) return false;
+        }
+
+        return true;
+    }
+
+    private void ToggleTuttiGruppi(StatoGruppi stato, List<RigaConciliazione> righe)
+    {
+        if (TuttiAperti(stato, righe)) { stato.Clear(); return; }
+
+        foreach (var f in RaggruppaPerFornitore(righe))
+        {
+            stato.Fornitori.Add(f.Key);
+            foreach (var d in RaggruppaPerDocumento(f))
+                stato.Documenti.Add(ChiaveDocumento(f.Key, d.Key));
+        }
+    }
+
+    /// <summary>Dopo un caricamento: tutto chiuso, tranne quando c'è un solo fornitore.</summary>
+    private void InizializzaGruppi()
+    {
+        _bolleAperte.Clear();
+        _fattureAperte.Clear();
+
+        var gb = RaggruppaPerFornitore(Bolle);
+        if (gb.Count == 1) _bolleAperte.Fornitori.Add(gb[0].Key);
+
+        var gf = RaggruppaPerFornitore(Fatture);
+        if (gf.Count == 1) _fattureAperte.Fornitori.Add(gf[0].Key);
+    }
+
+
+    private async Task Concilia_Click()
+    {
+        if (Bolle.Count == 0 || Fatture.Count == 0)
+        {
+            await _dialogs.ErroreAsync("Caricare prima i dati per poter proporre la conciliazione.");
+            return;
+        }
+        try
+        {
+            _busy = true;
+
+            // Step 3: Salva le conciliazioni
+            await SalvaConciliazioni();
+
+            await _dialogs.MostraMessaggioAsync("Informazione", "Salvataggio conciliazioni terminato.");
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+    }
+
+    // ---------------- Conciliazione ----------------
+
+    /// <summary>
+    /// Pulsante "Concilia": match esatto in .NET + fuzzy via Python su non-matching.
+    /// </summary>
+    private async Task ProponiConciliazione_Click()
+    {
+        // var righeBolle = Bolle.Where(r => r.Selezionato).ToList();
+        // var righeFatture = Fatture.Where(r => r.Selezionato).ToList();
+
+        var righeBolle = Bolle.ToList();
+        var righeFatture = Fatture.ToList();
+
+#if !DEBUG
+        if (righeBolle.Count == 0 || righeFatture.Count == 0)
+        {
+            await _dialogs.ErroreAsync("Selezionare almeno una riga in ciascuna griglia.");
+            return;
+        }
+#endif
+
+        if (!await _dialogs.ConfermaAsync($"Conciliare {righeBolle.Count} righe bolla con {righeFatture.Count} righe fattura?")) return;
+
+        try
+        {
+            _busy = true;
+
+            List<ConciliazioneResponse> ret = await _conciliazioneService.GetConciliazione(righeBolle, righeFatture);
+
+            var s = $"✓ Conciliato:";
+            ret.ForEach(x =>
+            {
+                string fornitore = x.Document.Fornitore;
+
+                var bolleGrid = Bolle.Where(x => x.Fornitore == fornitore).ToList();
+                var fattureGrid = Fatture.Where(x => x.Fornitore == fornitore).ToList();
+
+                var b = x.Document.BolleNonConciliate.Count();
+                var f = x.Document.FattureNonConciliate.Count();
+                var c = x.Document.Conciliazioni.Count();
+
+                s += $"\n\n" +
+                     $"Fornitore: {fornitore}\n" +
+                     $"Bolle non conciliate: {b}\n" +
+                     $"Fatture non conciliate: {f}\n" +
+                     $"Conciliazioni proposte: {c}";
+
+
+                foreach (var n in x.Document.BolleNonConciliate)
+                {
+                    var id_bolla_non = n.Id;
+                    var codide_bolla_non = n.Codice;
+                    var qta_bolla_non = n.Qta;
+                }
+
+                foreach (var m in x.Document.FattureNonConciliate)
+                {
+                    var id_fattura_non = m.Id;
+                    var r = fattureGrid.Where(x => x.IdRiga == id_fattura_non).FirstOrDefault();
+                    if (r is not null)
+                    {
+                        r.Note = "";
+                        r.Stato = "NON_CONCILIATA";
+                    }
+                    var codide_fattura_non = m.Codice;
+                    var qta_fattura_non = m.Qta;
+                }
+
+                //Ciclo per ogni riga fattura
+                foreach (var conc in x.Document.Conciliazioni)
+                {
+                    var stato_conc = conc.StatoConciliazione;
+                    var note = conc.Note;
+
+                    var diff = conc.DifferenzaQta;
+                    var totale = conc.TotaleQtaBolle;
+
+                    var id_fattura = conc.Fattura.Id;
+
+                    var r = fattureGrid.Where(x => x.IdRiga == id_fattura).FirstOrDefault();
+                    if (r is not null)
+                    {
+                        if (conc.DifferenzaQta == 0) r.Selezionato = true;
+                        r.Qta_Conc = conc.TotaleQtaBolle;
+                        r.Note = conc.Note;
+                        r.Stato = conc.StatoConciliazione;
+                    }
+
+                    var cod_fattura = conc.Fattura.Codice;
+                    var qta_fattura = conc.Fattura.Qta;
+
+                    var bolle_collegate = conc.BolleCollegate;
+                    foreach (var bolla in bolle_collegate)
+                    {
+                        var id_bolla = bolla.Id;
+                        var s = bolleGrid.Where(x => x.IdRiga == id_bolla).FirstOrDefault();
+                        if (s is not null)
+                        {
+                            s.Selezionato = true;
+                            s.Qta_Conc = bolla.Qta;
+                        }
+
+                        var score_bolla = bolla.FuzzyScore;
+                        var qta_bolla = bolla.Qta;
+                        var codice_orig_bolla = bolla.CodiceOriginale;
+                    }
+                }
+            });
+
+            await _dialogs.InfoAsync(s);
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+
+    /// <summary>Salva le conciliazioni via API (POST /api/v1/conciliazione).</summary>
+    private async Task SalvaConciliazioni()
+    {
+        var righeBolle = Bolle.ToList();
+        var righeFatture = Fatture.ToList();
+        await _conciliazioneService.SalvaConciliazione(righeBolle, righeFatture);
+
+    }
+}
