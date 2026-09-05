@@ -1,3 +1,5 @@
+<p align="center"><img src="emma-logo.png" alt="EMMA" width="104" /></p>
+
 # Manuale Utente – EMMA Client Web
 
 *Guida all'utilizzo della piattaforma documentale EMMA per l'utente aziendale.*
