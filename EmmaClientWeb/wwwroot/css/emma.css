@@ -1134,27 +1134,22 @@ body {
     overflow: hidden;
 }
 
+/* Il marchio è il componente EmmaLogo: qui restano solo misura e ombra.
+   Il border-radius replica l'rx del tile disegnato nell'SVG (16/64 = 25%). */
 .emma-logo {
     width: 34px;
     height: 34px;
     flex: 0 0 34px;
-    display: grid;
-    place-items: center;
-    border-radius: 9px;
-    background: linear-gradient(135deg, #4DB1F7 0%, var(--emma-blue) 45%, #0F6FCB 100%);
-    color: #FFFFFF;
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: .5px;
-    box-shadow: 0 4px 10px rgba(33, 150, 243, .35);
+    display: block;
+    border-radius: 25%;
+    box-shadow: 0 4px 10px rgba(33, 150, 243, .30);
 }
 
 .emma-logo.lg {
-    width: 42px;
-    height: 42px;
-    flex-basis: 42px;
-    border-radius: 12px;
-    font-size: 18px;
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+    box-shadow: 0 8px 20px rgba(8, 38, 68, .28);
 }
 
 .emma-brand-text {

@@ -1,0 +1,70 @@
+@* ------------------------------------------------------------------
+   Marchio EMMA: foglio con angolo piegato, le righe interne formano
+   la E. Disegnato su griglia 64x64; la dimensione la decide il CSS
+   (classe .emma-logo), così lo stesso componente serve sidebar,
+   login e qualsiasi altro punto.
+
+   Variant:
+     gradient (default) — tile blu sfumato, foglio bianco   → fondi chiari
+     invert             — tile bianco, foglio blu           → fondi blu
+     mono               — nessun tile, marchio scuro        → stampa
+   ------------------------------------------------------------------ *@
+<svg class="@Class" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
+     role="img" aria-label="EMMA" focusable="false">
+    @if (Variant != "mono")
+    {
+        @if (Variant == "invert")
+        {
+            <rect x="0" y="0" width="64" height="64" rx="16" fill="#FFFFFF" />
+        }
+        else
+        {
+            <defs>
+                <linearGradient id="emmaLogoGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#4DB1F7" />
+                    <stop offset="45%" stop-color="#2196F3" />
+                    <stop offset="100%" stop-color="#0F6FCB" />
+                </linearGradient>
+            </defs>
+            <rect x="0" y="0" width="64" height="64" rx="16" fill="url(#emmaLogoGrad)" />
+        }
+    }
+
+    @* Foglio *@
+    <path d="M18 11h17.5L49 24.5V50a3 3 0 0 1-3 3H18a3 3 0 0 1-3-3V14a3 3 0 0 1 3-3z" fill="@Foglio" />
+    @* Angolo piegato *@
+    <path d="M35.5 11 49 24.5H38.5a3 3 0 0 1-3-3z" fill="@Piega" />
+    @* Le tre righe: è la E *@
+    <rect x="22" y="29.5" width="20" height="4.6" rx="2.3" fill="@Riga" />
+    <rect x="22" y="37.5" width="13" height="4.6" rx="2.3" fill="@Riga" />
+    <rect x="22" y="45.5" width="20" height="4.6" rx="2.3" fill="@Riga" />
+</svg>
+
+@code {
+    /// <summary>gradient (default) | invert | mono</summary>
+    [Parameter] public string Variant { get; set; } = "gradient";
+
+    /// <summary>Classi CSS sull'elemento svg: da lì arrivano dimensione e ombra.</summary>
+    [Parameter] public string? Class { get; set; } = "emma-logo";
+
+    private string Foglio => Variant switch
+    {
+        "invert" => "#1668B0",
+        "mono" => "#16202E",
+        _ => "#FFFFFF"
+    };
+
+    private string Piega => Variant switch
+    {
+        "invert" => "#7FB6E8",
+        "mono" => "#B9C4D2",
+        _ => "#CFE6FA"
+    };
+
+    private string Riga => Variant switch
+    {
+        "invert" => "#FFFFFF",
+        "mono" => "#FFFFFF",
+        _ => "#1668B0"
+    };
+}
