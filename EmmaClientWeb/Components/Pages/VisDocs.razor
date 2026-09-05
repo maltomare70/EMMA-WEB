@@ -199,7 +199,7 @@
                                                             <td class="cell-center">
                                                                 <button class="btn btn-grey btn-sm"
                                                                         @onclick="() => Conciliazione_Click(m, r)"
-                                                                        disabled="@(_busy || !(r.RigheDocumentoConciliazione?.Any() ?? false))">
+                                                                        disabled="@(_busy)">
                                                                     Conciliazione
                                                                 </button>
                                                             </td>
@@ -238,6 +238,7 @@
             <div class="win-title">Conciliazione riga &mdash; @_conciliazioneTitolo</div>
 
             <div class="conc-body">
+                Conciliazione Ordini-Bolle
                 <table class="emma-grid">
                     <thead>
                         <tr>
@@ -250,7 +251,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @if (!_righeConciliazione.Any())
+                        @if (!_righeConciliazione1.Any())
                         {
                             <tr>
                                 <td colspan="6" class="empty-state">Nessun dato di conciliazione per questa riga.</td>
@@ -258,7 +259,46 @@
                         }
                         else
                         {
-                            @foreach (var rc in _righeConciliazione)
+                            @foreach (var rc in _righeConciliazione1)
+                            {
+                                <tr @key="rc">
+                                    <td class="cell-right">@rc.Qta</td>
+                                    <td class="cell-right">@rc.Qta_conc</td>
+                                    <td class="cell-right">@rc.Delta</td>
+                                    <td class="cell-center">
+                                        @* Flag di conciliazione: 0 = non conciliata, diverso da 0 = conciliata (sola lettura) *@
+                                        <input type="checkbox" checked="@(rc.Flag != 0)" disabled />
+                                    </td>
+                                    <td class="cell-right">@rc.numero_doc_abbinamento</td>
+                                    <td class="cell-right">@rc.data_doc_abbinamento</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+
+                Conciliazione Bolle-Fatture
+                <table class="emma-grid">
+                    <thead>
+                        <tr>
+                            <th style="width:130px">Q.tà</th>
+                            <th style="width:130px">Q.tà Conciliata</th>
+                            <th style="width:130px">Delta</th>
+                            <th style="width:90px" class="cell-center">Flag</th>
+                            <th style="width:130px">Num.Doc.Abb.</th>
+                            <th style="width:130px">Data.Doc.Abb.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!_righeConciliazione2.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="empty-state">Nessun dato di conciliazione per questa riga.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var rc in _righeConciliazione2)
                             {
                                 <tr @key="rc">
                                     <td class="cell-right">@rc.Qta</td>
@@ -310,7 +350,8 @@
     // Popup righe di conciliazione
     private bool _conciliazioneVisibile;
     private string _conciliazioneTitolo = string.Empty;
-    private List<RigheDocumentoConciliazione> _righeConciliazione = new();
+    private List<RigheDocumentoConciliazione> _righeConciliazione1 = new();
+    private List<RigheDocumentoConciliazione> _righeConciliazione2 = new();
 
     private EmmaDialogs _dialogs = default!;
     private PdfViewer _pdfViewer = default!;
@@ -451,7 +492,8 @@
                     Imponibile = articolo.Imponibile,
                     Totale = articolo.Totale,
                     UnitaMisura = articolo.UnitaMisura,
-                    RigheDocumentoConciliazione = righeDocumentoConciliazione.Where(x => x.IdRiga?.ToLower() == articolo.Id_Riga?.ToLower()).ToList()
+                    RigheDocumentoConciliazione1 = righeDocumentoConciliazione.Where(x => x.IdRiga?.ToLower() == articolo.Id_Riga?.ToLower() && x.Tipo == 1).ToList(),
+                    RigheDocumentoConciliazione2 = righeDocumentoConciliazione.Where(x => x.IdRiga?.ToLower() == articolo.Id_Riga?.ToLower() && x.Tipo == 2).ToList()
                 });
             }
 
@@ -486,7 +528,8 @@
                 Delta = x.delta,
                 Flag = x.flag,
                 numero_doc_abbinamento = x.numero_doc_abbinamento,
-                data_doc_abbinamento = x.data_doc_abbinamento
+                data_doc_abbinamento = x.data_doc_abbinamento,
+                Tipo = x.tipo_doc
             });
         });
 
@@ -703,14 +746,17 @@
         {
             _busy = true;
 
-            var righe = riga.RigheDocumentoConciliazione?.ToList() ?? new List<RigheDocumentoConciliazione>();
+            var righe1 = riga.RigheDocumentoConciliazione1?.ToList() ?? new List<RigheDocumentoConciliazione>();
+            var righe2 = riga.RigheDocumentoConciliazione2?.ToList() ?? new List<RigheDocumentoConciliazione>();
 
             if (!string.IsNullOrWhiteSpace(riga.IdRiga))
             {
-                riga.RigheDocumentoConciliazione = riga.RigheDocumentoConciliazione ?? new List<RigheDocumentoConciliazione>();
+                riga.RigheDocumentoConciliazione1 = riga.RigheDocumentoConciliazione1 ?? new List<RigheDocumentoConciliazione>();
+                riga.RigheDocumentoConciliazione2 = riga.RigheDocumentoConciliazione2 ?? new List<RigheDocumentoConciliazione>();
             }
 
-            _righeConciliazione = righe;
+            _righeConciliazione1 = righe1;
+            _righeConciliazione2 = righe2;
             _conciliazioneTitolo = $"{master.NumeroDocumento} / {riga.CodiceArticolo} - {riga.DescrizioneArticolo}";
             _conciliazioneVisibile = true;
         }
@@ -727,7 +773,8 @@
     private void ChiudiConciliazione()
     {
         _conciliazioneVisibile = false;
-        _righeConciliazione = new List<RigheDocumentoConciliazione>();
+        _righeConciliazione1 = new List<RigheDocumentoConciliazione>();
+        _righeConciliazione2 = new List<RigheDocumentoConciliazione>();
     }
 
     /// <summary>Replica di ExportButton_OnClick — genera il CSV e lo fa scaricare dal browser.</summary>
