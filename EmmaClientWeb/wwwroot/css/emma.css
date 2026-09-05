@@ -1825,3 +1825,11 @@ body {
 .emma-topbar .emma-spacer {
     flex: 1 1 auto;
 }
+
+/* Icona di warning nelle grid di conciliazione */
+.warn-icon {
+    color: #d97706;
+    font-size: 15px;
+    line-height: 1;
+    cursor: help;
+}

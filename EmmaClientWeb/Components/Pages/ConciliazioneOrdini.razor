@@ -230,6 +230,7 @@
                                        disabled="@(_busy || Fatture.Count == 0)" />
                                 <div class="conc-th-sub"></div>
                             </th>
+                            <th style="width:34px" class="cell-center" title="Stato conciliazione"></th>
                             <th style="min-width:150px">Fornitore</th>
                             <th style="width:130px">Numero Documento</th>
                             <th style="width:115px">Data Documento</th>
@@ -245,7 +246,7 @@
                         @if (Fatture.Count == 0)
                         {
                             <tr>
-                                <td colspan="10" class="empty-state">
+                                <td colspan="11" class="empty-state">
                                     Imposta i filtri e premi "Carica Dati" per caricare le fatture.
                                 </td>
                             </tr>
@@ -266,6 +267,7 @@
                                                @onchange="e => SelezionaGruppo(g, e.Value is true)"
                                                disabled="@_busy" />
                                     </td>
+                                    <td class="cell-center">@IconaStato(StatoGruppo(g))</td>
                                     <td colspan="5" @onclick="() => ToggleFornitore(_fattureAperte, g.Key)">
                                         <span class="expander">@(aperto ? "▼" : "►")</span>
                                         <span class="group-title">@NomeGruppo(g.Key)</span>
@@ -296,6 +298,7 @@
                                                        @onchange="e => SelezionaGruppo(d, e.Value is true)"
                                                        disabled="@_busy" />
                                             </td>
+                                            <td class="cell-center">@IconaStato(StatoGruppo(d))</td>
                                             <td class="cell-child"></td>
                                             <td @onclick="() => ToggleDocumento(_fattureAperte, chiaveDoc)">
                                                 <span class="expander">@(docAperto ? "▼" : "►")</span>
@@ -326,6 +329,7 @@
                                                                @onchange="e => CambiaSelezione(r, e.Value is true)"
                                                                disabled="@_busy" />
                                                     </td>
+                                                    <td class="cell-center">@IconaStato(r.Stato)</td>
                                                     <td class="cell-child"></td>
                                                     <td class="cell-child"></td>
                                                     <td class="cell-child"></td>
@@ -438,6 +442,22 @@
     }
 
     private static string Qta(decimal v) => v.ToString("0.###", CultureInfo.CurrentCulture);
+
+    /// <summary>Stato da segnalare: valorizzato e diverso da "CONCILIATO".</summary>
+    private static bool StatoDaSegnalare(string? stato)
+        => !string.IsNullOrWhiteSpace(stato)
+           && !string.Equals(stato.Trim(), "CONCILIATO", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Icona di warning mostrata quando lo stato della riga e' da segnalare.</summary>
+    private static MarkupString IconaStato(string? stato)
+        => !StatoDaSegnalare(stato)
+            ? new MarkupString(string.Empty)
+            : new MarkupString($"<span class=\"warn-icon\" title=\"{System.Net.WebUtility.HtmlEncode(stato)}\">&#9888;</span>");
+
+    /// <summary>Stato riassuntivo di un gruppo: il primo stato da segnalare tra le righe.</summary>
+    private static string StatoGruppo(IEnumerable<RigaConciliazione> righe)
+        => righe.Select(r => r.Stato)
+                .FirstOrDefault(StatoDaSegnalare) ?? string.Empty;
 
     // ---------------- Caricamento dati ----------------
 
