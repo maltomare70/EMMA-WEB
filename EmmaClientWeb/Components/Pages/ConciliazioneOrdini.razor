@@ -742,7 +742,7 @@
         {
             _busy = true;
 
-            List<ConciliazioneResponse> ret = await _conciliazioneService.GetConciliazione(righeBolle, righeFatture);
+            List<ConciliazioneResponse> ret = await _conciliazioneService.GetConciliazione("ORDINI-BOLLE", righeBolle, righeFatture);
 
             var s = $"✓ Conciliato:";
             ret.ForEach(x =>
