@@ -3,55 +3,99 @@
 @inject UserSession Session
 @inject NavigationManager Nav
 
-@* Replica di MainWindow.axaml - UniformGrid Rows=2 Columns=4 con card 200x200 *@
+@* Home applicativa: le operazioni raggruppate per area, stesse voci del menu laterale. *@
 
-<div class="dashboard">
-    <div class="dashboard-header">
-        <h1>Benvenuto</h1>
-        <p>Seleziona un'operazione per iniziare</p>
+<div class="dash">
+
+    <div class="dash-hero">
+        <h1>Ciao @Session.User</h1>
+        <p>Seleziona un'operazione per iniziare, oppure usa il menu di navigazione.</p>
     </div>
 
-    <div class="dashboard-grid">
-        <a class="dashboard-card" href="/documenti/carica">
-            <img src="img/doc.png" alt="Carica Documenti" />
-            <span>Carica Documenti</span>
+    <div class="dash-section">Documenti</div>
+    <div class="dash-grid">
+        <a class="dash-card" href="/documenti/carica">
+            <span class="dash-ico"><EmmaIcon Name="upload" /></span>
+            <span class="dash-txt">
+                <b>Carica Documenti</b>
+                <p>Importa una bolla o una fattura da PDF o XML e completa le righe.</p>
+            </span>
+            <EmmaIcon Name="arrow" Class="dash-arrow" />
         </a>
 
-        <a class="dashboard-card" href="/documenti">
-            <img src="img/visdoc.png" alt="Visualizza Documenti" />
-            <span>Visualizza Documenti</span>
-        </a>
-
-        <a class="dashboard-card" href="/fornitori">
-            <img src="img/forn.png" alt="Fornitori" />
-            <span>Fornitori</span>
-        </a>
-
-        <a class="dashboard-card" href="/articoli">
-            <img src="img/articoli.png" alt="Articoli" />
-            <span>Articoli</span>
-        </a>
-
-        <a class="dashboard-card" href="/conciliazione-ordini">
-            <img src="img/concilia.svg" alt="Concilia Bolle -> Fatture" />
-            <span>Concilia Ordini -> Bolle</span>
-        </a>
-
-        <a class="dashboard-card" href="/conciliazione">
-            <img src="img/concilia.svg" alt="Concilia Bolle -> Fatture" />
-            <span>Concilia Bolle -> Fatture</span>
-        </a>
-
-        <a class="dashboard-card" href="/log">
-            <img src="img/log.png" alt="Log" />
-            <span>Log</span>
-        </a>
-
-        <a class="dashboard-card" href="/password">
-            <img src="img/pwd.png" alt="Cambio Password" />
-            <span>Cambio Password</span>
+        <a class="dash-card" href="/documenti">
+            <span class="dash-ico"><EmmaIcon Name="files" /></span>
+            <span class="dash-txt">
+                <b>Visualizza Documenti</b>
+                <p>Cerca per fornitore, tipo e stato; consulta ed esporta l'elenco.</p>
+            </span>
+            <EmmaIcon Name="arrow" Class="dash-arrow" />
         </a>
     </div>
+
+    <div class="dash-section">Anagrafiche</div>
+    <div class="dash-grid">
+        <a class="dash-card" href="/fornitori">
+            <span class="dash-ico tone-violet"><EmmaIcon Name="truck" /></span>
+            <span class="dash-txt">
+                <b>Fornitori</b>
+                <p>Anagrafica fornitori: inserimento, modifica ed eliminazione.</p>
+            </span>
+            <EmmaIcon Name="arrow" Class="dash-arrow" />
+        </a>
+
+        <a class="dash-card" href="/articoli">
+            <span class="dash-ico tone-violet"><EmmaIcon Name="box" /></span>
+            <span class="dash-txt">
+                <b>Articoli</b>
+                <p>Codici e descrizioni degli articoli di ciascun fornitore.</p>
+            </span>
+            <EmmaIcon Name="arrow" Class="dash-arrow" />
+        </a>
+    </div>
+
+    <div class="dash-section">Conciliazione</div>
+    <div class="dash-grid">
+        <a class="dash-card" href="/conciliazione-ordini">
+            <span class="dash-ico tone-green"><EmmaIcon Name="compare" /></span>
+            <span class="dash-txt">
+                <b>Concilia Ordini → Bolle</b>
+                <p>Abbina le righe d'ordine alle bolle, per fornitore e periodo.</p>
+            </span>
+            <EmmaIcon Name="arrow" Class="dash-arrow" />
+        </a>
+
+        <a class="dash-card" href="/conciliazione">
+            <span class="dash-ico tone-green"><EmmaIcon Name="check-doc" /></span>
+            <span class="dash-txt">
+                <b>Concilia Bolle → Fatture</b>
+                <p>Verifica la corrispondenza tra bolle ricevute e fatture.</p>
+            </span>
+            <EmmaIcon Name="arrow" Class="dash-arrow" />
+        </a>
+    </div>
+
+    <div class="dash-section">Sistema</div>
+    <div class="dash-grid">
+        <a class="dash-card" href="/log">
+            <span class="dash-ico tone-slate"><EmmaIcon Name="log" /></span>
+            <span class="dash-txt">
+                <b>Log</b>
+                <p>Storico delle elaborazioni, filtrabile per data e stato.</p>
+            </span>
+            <EmmaIcon Name="arrow" Class="dash-arrow" />
+        </a>
+
+        <a class="dash-card" href="/password">
+            <span class="dash-ico tone-amber"><EmmaIcon Name="key" /></span>
+            <span class="dash-txt">
+                <b>Cambio Password</b>
+                <p>Aggiorna la password utilizzata per l'accesso.</p>
+            </span>
+            <EmmaIcon Name="arrow" Class="dash-arrow" />
+        </a>
+    </div>
+
 </div>
 
 @code {

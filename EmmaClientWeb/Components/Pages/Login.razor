@@ -4,39 +4,74 @@
 @inject EmmaServiceFactory Factory
 @inject NavigationManager Nav
 
-@* Replica di Forms/Login/Login.axaml - Window 350x250 centrata sullo schermo *@
+@* Schermata di accesso: pannello di presentazione + form credenziali. *@
 
-<div class="login-backdrop @(_busy ? "busy" : "")">
-    <div class="login-window">
-        <div class="win-title">Login</div>
-        <div class="login-body">
-            <h2>Accedi</h2>
+<div class="login-shell @(_busy ? "busy" : "")">
 
-            <div class="group">
-                <label for="txtUser">Utente:</label>
-                <input id="txtUser" class="emma-input" type="text" placeholder="Inserisci l'utente"
-                       @bind="_user" @bind:event="oninput" @onkeydown="OnKeyDown" disabled="@_busy" />
+    <div class="login-hero">
+        <div class="login-hero-top">
+            <span class="emma-logo lg">E</span>
+            <span class="emma-brand-text light">
+                <b>EMMA</b>
+                <span>Doc Platform</span>
+            </span>
+        </div>
+
+        <div class="login-hero-body">
+            <h2>I tuoi documenti sotto controllo,<br />dal caricamento alla conciliazione.</h2>
+            <ul class="login-points">
+                <li><EmmaIcon Name="upload" /> Acquisizione di bolle e fatture da PDF o XML</li>
+                <li><EmmaIcon Name="compare" /> Conciliazione tra ordini, bolle e fatture</li>
+                <li><EmmaIcon Name="shield" /> Storico completo delle elaborazioni</li>
+            </ul>
+        </div>
+
+        <div class="login-hero-foot">© @DateTime.Now.Year EMMA Doc Platform</div>
+    </div>
+
+    <div class="login-panel">
+        <div class="login-card">
+            <h1>Accedi</h1>
+            <p class="login-sub">Inserisci le tue credenziali per entrare nel client.</p>
+
+            <div class="login-field">
+                <label for="txtUser">Utente</label>
+                <span class="input-wrap">
+                    <EmmaIcon Name="user" Class="lead" />
+                    <input id="txtUser" class="emma-input input-lg" type="text" autocomplete="username"
+                           placeholder="Inserisci l'utente"
+                           @bind="_user" @bind:event="oninput" @onkeydown="OnKeyDown" disabled="@_busy" />
+                </span>
             </div>
 
-            <div class="group">
-                <label for="txtPassword">Password:</label>
-                <input id="txtPassword" class="emma-input" type="password" placeholder="Inserisci la password"
-                       @bind="_password" @bind:event="oninput" @onkeydown="OnKeyDown" disabled="@_busy" />
+            <div class="login-field">
+                <label for="txtPassword">Password</label>
+                <span class="input-wrap">
+                    <EmmaIcon Name="lock" Class="lead" />
+                    <input id="txtPassword" class="emma-input input-lg has-trail" autocomplete="current-password"
+                           type="@(_mostraPassword ? "text" : "password")" placeholder="Inserisci la password"
+                           @bind="_password" @bind:event="oninput" @onkeydown="OnKeyDown" disabled="@_busy" />
+                    <button class="pwd-toggle" type="button" tabindex="-1"
+                            title="@(_mostraPassword ? "Nascondi la password" : "Mostra la password")"
+                            aria-label="Mostra o nascondi la password" @onclick="TogglePassword">
+                        <EmmaIcon Name="@(_mostraPassword ? "eye-off" : "eye")" />
+                    </button>
+                </span>
             </div>
 
-            <div class="login-actions">
-                <button class="btn btn-dodger" @onclick="BtnOk_Click" disabled="@_busy">
-                    @if (_busy)
-                    {
-                        <span class="emma-spinner"></span>
-                    }
-                    else
-                    {
-                        <span>OK</span>
-                    }
-                </button>
-                <button class="btn btn-red" @onclick="BtnCancel_Click" disabled="@_busy">Annulla</button>
-            </div>
+            <button class="btn btn-blue btn-lg" @onclick="BtnOk_Click" disabled="@_busy">
+                @if (_busy)
+                {
+                    <span class="emma-spinner"></span>
+                    <span>Accesso in corso…</span>
+                }
+                else
+                {
+                    <span>Accedi</span>
+                }
+            </button>
+
+            <button class="btn-link" type="button" @onclick="BtnCancel_Click" disabled="@_busy">Pulisci i campi</button>
         </div>
     </div>
 </div>
@@ -44,6 +79,10 @@
 <EmmaDialogs @ref="_dialogs" />
 
 @code {
+    private bool _mostraPassword;
+
+    private void TogglePassword() => _mostraPassword = !_mostraPassword;
+
     private string _user = string.Empty;
     private string _password = string.Empty;
     private bool _busy;

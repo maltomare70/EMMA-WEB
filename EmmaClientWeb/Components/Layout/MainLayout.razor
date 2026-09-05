@@ -3,42 +3,99 @@
 @inject UserSession Session
 @inject NavigationManager Nav
 
-<div class="emma-shell">
-    <div class="emma-titlebar">
-        @if (IsLoginPage)
-        {
-            <span class="emma-window-title">Emma Client</span>
-        }
-        else
-        {
-            @if (!IsDashboard)
-            {
-                <button class="btn btn-default btn-sm" @onclick="@(() => Nav.NavigateTo("/dashboard"))">← Indietro</button>
-            }
-            <span class="emma-window-title">@Title</span>
-            <span class="emma-spacer"></span>
-            <button class="emma-iconbtn" type="button" title="Manuale utente"
-                    aria-label="Apri il manuale utente" @onclick="ApriManuale">
-                @* Icona "libro aperto": inline invece che come file, così segue il
-                   colore del testo e non aggiunge una richiesta HTTP. *@
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                    <path d="M12 6.5C10.6 5.2 8.7 4.5 6.5 4.5H3v13h3.5c2.2 0 4.1.7 5.5 2 1.4-1.3 3.3-2 5.5-2H21v-13h-3.5c-2.2 0-4.1.7-5.5 2z" />
-                    <path d="M12 6.5v13" />
-                </svg>
-            </button>
-            @if (Session.IsAuthenticated)
-            {
-                <span class="emma-user">@Session.User</span>
-                <button class="btn btn-grey btn-sm" @onclick="Esci">Esci</button>
-            }
-        }
-    </div>
+@* ------------------------------------------------------------------
+   Shell applicativa: barra di navigazione laterale + topbar.
+   La pagina di login usa la stessa MainLayout ma senza shell.
+   ------------------------------------------------------------------ *@
 
-    <div class="emma-content">
+@if (IsLoginPage)
+{
+    <div class="emma-plain">
         @Body
     </div>
-</div>
+}
+else
+{
+    <div class="emma-app @(_navCollapsed ? "nav-collapsed" : "") @(_navMobileOpen ? "nav-mobile-open" : "")">
+
+        <aside class="emma-sidebar">
+            <a class="emma-brand" href="/dashboard" @onclick="ChiudiNavMobile">
+                <span class="emma-logo">E</span>
+                <span class="emma-brand-text">
+                    <b>EMMA</b>
+                    <span>Doc Platform</span>
+                </span>
+            </a>
+
+            <nav class="emma-nav">
+                <a class="emma-nav-link @(IsActive("/dashboard") ? "active" : "")" href="/dashboard" @onclick="ChiudiNavMobile">
+                    <EmmaIcon Name="home" />
+                    <span class="emma-nav-label">Dashboard</span>
+                </a>
+
+                @foreach (var gruppo in Menu)
+                {
+                    <div class="emma-nav-group">@gruppo.Titolo</div>
+
+                    @foreach (var voce in gruppo.Voci)
+                    {
+                        <a class="emma-nav-link @(IsActive(voce.Href) ? "active" : "")" href="@voce.Href"
+                           title="@voce.Label" @onclick="ChiudiNavMobile">
+                            <EmmaIcon Name="@voce.Icona" />
+                            <span class="emma-nav-label">@voce.Label</span>
+                        </a>
+                    }
+                }
+            </nav>
+
+            @if (Session.IsAuthenticated)
+            {
+                <div class="emma-sidebar-footer">
+                    <span class="emma-avatar" title="@Session.User">@Iniziale</span>
+                    <span class="emma-user-meta">
+                        <b>@Session.User</b>
+                        <span>Utente connesso</span>
+                    </span>
+                    <button class="emma-ghostbtn" type="button" title="Esci" aria-label="Esci" @onclick="Esci">
+                        <EmmaIcon Name="logout" />
+                    </button>
+                </div>
+            }
+        </aside>
+
+        <div class="emma-scrim" @onclick="ChiudiNavMobile"></div>
+
+        <div class="emma-main">
+            <header class="emma-topbar">
+                <button class="emma-ghostbtn" type="button" title="Mostra/nascondi menu"
+                        aria-label="Mostra o nascondi il menu" @onclick="ToggleNav">
+                    <EmmaIcon Name="menu" />
+                </button>
+
+                @if (!IsDashboard)
+                {
+                    <button class="emma-ghostbtn" type="button" @onclick="@(() => Nav.NavigateTo("/dashboard"))">
+                        <EmmaIcon Name="back" />
+                        <span class="hide-sm">Indietro</span>
+                    </button>
+                }
+
+                <span class="emma-page-title">@Title</span>
+                <span class="emma-spacer"></span>
+
+                <button class="emma-ghostbtn" type="button" title="Manuale utente"
+                        aria-label="Apri il manuale utente" @onclick="ApriManuale">
+                    <EmmaIcon Name="book" />
+                    <span class="hide-sm">Manuale</span>
+                </button>
+            </header>
+
+            <div class="emma-view">
+                @Body
+            </div>
+        </div>
+    </div>
+}
 
 @* Manuale utente: stessa finestra modale usata per gli allegati PDF, ma il file
    è statico e servito da wwwroot, quindi non passa dalla PdfCache. *@
@@ -58,6 +115,55 @@
 }
 
 @code {
+
+    // ---- Navigazione laterale -------------------------------------------
+
+    private sealed record VoceMenu(string Href, string Icona, string Label);
+    private sealed record GruppoMenu(string Titolo, VoceMenu[] Voci);
+
+    private static readonly GruppoMenu[] Menu =
+    [
+        new GruppoMenu("Documenti",
+        [
+            new VoceMenu("/documenti/carica", "upload", "Carica Documenti"),
+            new VoceMenu("/documenti", "files", "Visualizza Documenti")
+        ]),
+        new GruppoMenu("Anagrafiche",
+        [
+            new VoceMenu("/fornitori", "truck", "Fornitori"),
+            new VoceMenu("/articoli", "box", "Articoli")
+        ]),
+        new GruppoMenu("Conciliazione",
+        [
+            new VoceMenu("/conciliazione-ordini", "compare", "Ordini → Bolle"),
+            new VoceMenu("/conciliazione", "check-doc", "Bolle → Fatture")
+        ]),
+        new GruppoMenu("Sistema",
+        [
+            new VoceMenu("/log", "log", "Log"),
+            new VoceMenu("/password", "key", "Cambio Password")
+        ])
+    ];
+
+    // Su desktop il pulsante comprime la sidebar a icone, su mobile apre/chiude
+    // il drawer: le due classi sono gestite da media query diverse.
+    private bool _navCollapsed;
+    private bool _navMobileOpen;
+
+    private void ToggleNav()
+    {
+        _navCollapsed = !_navCollapsed;
+        _navMobileOpen = !_navMobileOpen;
+    }
+
+    private void ChiudiNavMobile() => _navMobileOpen = false;
+
+    private bool IsActive(string href) => Path == href.Trim('/').ToLowerInvariant();
+
+    private string Iniziale => string.IsNullOrWhiteSpace(Session.User)
+        ? "?"
+        : Session.User.Trim()[..1].ToUpperInvariant();
+
     // File statico sotto wwwroot: rigenerandolo da Manuale/*.md va sovrascritto qui.
     private const string ManualeUrl = "manuale/Manuale_Utente_EMMA.pdf";
 
@@ -68,12 +174,13 @@
     // Titolo della "Window" corrente, come i Title delle Window Avalonia
     private string Title => Path switch
     {
-        "dashboard" => "Emma Client",
+        "dashboard" => "Dashboard",
         "documenti/carica" => "Caricamento Documenti",
         "documenti" => "Visualizzatore Documenti",
         "fornitori" => "Fornitori",
         "articoli" => "Articoli Fornitore",
         "conciliazione" => "Conciliazione Bolle / Fatture",
+        "conciliazione-ordini" => "Conciliazione Ordini / Bolle",
         "log" => "Log",
         "password" => "Cambio Password",
         _ => "Emma Client"

@@ -8,22 +8,50 @@
    ============================================================ */
 
 :root {
-    --emma-bg: #F5F7FA;
-    --emma-title: #1E293B;
+    /* --- superfici e testo --- */
+    --emma-bg: #F4F6FA;
+    --emma-surface: #FFFFFF;
+    --emma-surface-2: #F7F9FC;
+    --emma-title: #16202E;
     --emma-subtitle: #64748B;
+    --emma-muted: #94A3B8;
     --emma-card-text: #334155;
-    --emma-card-border: #E2E8F0;
+    --emma-card-border: #E3E9F0;
+    --emma-label: #253143;
+
+    /* --- scala del blu di marca (ancorata al #2196F3 originale) --- */
+    --emma-blue-50: #EEF5FE;
+    --emma-blue-100: #DCEAFC;
+    --emma-blue-200: #BBD7F9;
     --emma-blue: #2196F3;
+    --emma-blue-600: #1B7FD6;
+    --emma-blue-700: #1668B0;
     --emma-dodger: #1E90FF;
-    --emma-green: #4CAF50;
-    --emma-green2: #2ecc71;
-    --emma-red: #F44336;
-    --emma-red2: #e74c3c;
-    --emma-grey: #757575;
-    --emma-panel-bg: #F9F9F9;
-    --emma-panel-border: #E0E0E0;
-    --emma-grid-border: #D0D0D0;
-    --emma-label: #333333;
+
+    /* --- colori di stato, versione tenue --- */
+    --emma-green: #2E9E5B;
+    --emma-green2: #2FA96A;
+    --emma-red: #D64545;
+    --emma-red2: #C94A42;
+    --emma-amber: #B7791F;
+    --emma-grey: #6B7280;
+
+    /* --- pannelli e griglie --- */
+    --emma-panel-bg: #F7F9FC;
+    --emma-panel-border: #E3E9F0;
+    --emma-grid-border: #DCE3EC;
+    --emma-input-border: #D3DBE6;
+
+    /* --- raggi, ombre, misure della shell --- */
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --sh-1: 0 1px 2px rgba(16, 32, 54, .06);
+    --sh-2: 0 4px 14px rgba(16, 32, 54, .09);
+    --sh-3: 0 16px 40px rgba(16, 32, 54, .16);
+    --nav-w: 248px;
+    --nav-w-col: 72px;
+    --topbar-h: 60px;
 }
 
 * {
@@ -997,4 +1025,792 @@ table.emma-grid thead th .conc-th-sub {
     .conc-split {
         flex-direction: column;
     }
+}
+
+/* ============================================================
+   LAYOUT MODERNO — shell con sidebar, dashboard e login.
+   Aggiunto in coda: le regole precedenti (titlebar Avalonia,
+   sezione admin, toolbar, DataGrid, dialoghi) restano valide.
+   ============================================================ */
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- Icone inline (componente EmmaIcon) ---------- */
+
+.emma-icon {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    display: block;
+}
+
+/* ---------- Affinamenti globali di controlli ---------- */
+
+.btn {
+    border-radius: 8px;
+    letter-spacing: .1px;
+    transition: filter .12s ease, box-shadow .12s ease, background .12s ease;
+}
+
+.btn:focus-visible,
+.emma-input:focus-visible,
+.emma-select:focus-visible,
+.emma-ghostbtn:focus-visible,
+.dash-card:focus-visible,
+.emma-nav-link:focus-visible {
+    outline: 2px solid var(--emma-blue-600);
+    outline-offset: 2px;
+}
+
+.emma-input,
+.emma-select {
+    border-radius: 8px;
+    border-color: var(--emma-input-border);
+    transition: border-color .12s ease, box-shadow .12s ease;
+}
+
+.emma-input:focus,
+.emma-select:focus {
+    border-color: var(--emma-blue-600);
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, .16);
+}
+
+.btn-default {
+    background: var(--emma-surface);
+    color: var(--emma-label);
+    border-color: var(--emma-input-border);
+}
+
+.btn-default:hover:not(:disabled) {
+    background: var(--emma-surface-2);
+    border-color: var(--emma-blue-200);
+    filter: none;
+}
+
+/* ---------- Shell applicativa ---------- */
+
+.emma-plain {
+    min-height: 100vh;
+}
+
+.emma-app {
+    display: flex;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--emma-bg);
+}
+
+/* ---- Sidebar ---- */
+
+.emma-sidebar {
+    width: var(--nav-w);
+    flex: 0 0 var(--nav-w);
+    display: flex;
+    flex-direction: column;
+    background: var(--emma-surface);
+    border-right: 1px solid var(--emma-card-border);
+    transition: width .18s ease, flex-basis .18s ease;
+    z-index: 60;
+}
+
+.emma-app.nav-collapsed .emma-sidebar {
+    width: var(--nav-w-col);
+    flex-basis: var(--nav-w-col);
+}
+
+.emma-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: var(--topbar-h);
+    flex: 0 0 var(--topbar-h);
+    padding: 0 16px;
+    border-bottom: 1px solid var(--emma-card-border);
+    text-decoration: none;
+    overflow: hidden;
+}
+
+.emma-logo {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #4DB1F7 0%, var(--emma-blue) 45%, #0F6FCB 100%);
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    box-shadow: 0 4px 10px rgba(33, 150, 243, .35);
+}
+
+.emma-logo.lg {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+    border-radius: 12px;
+    font-size: 18px;
+}
+
+.emma-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
+}
+
+.emma-brand-text b {
+    font-size: 14.5px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    color: var(--emma-title);
+}
+
+.emma-brand-text span {
+    font-size: 11px;
+    color: var(--emma-subtitle);
+    white-space: nowrap;
+}
+
+.emma-brand-text.light b { color: #FFFFFF; }
+.emma-brand-text.light span { color: rgba(255, 255, 255, .78); }
+
+.emma-nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.emma-nav-group {
+    padding: 14px 10px 6px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--emma-muted);
+}
+
+.emma-nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 10px;
+    border-radius: 9px;
+    color: var(--emma-card-text);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: background .13s ease, color .13s ease;
+}
+
+.emma-nav-link .emma-icon {
+    width: 19px;
+    height: 19px;
+    color: #8595A8;
+    transition: color .13s ease;
+}
+
+.emma-nav-link:hover {
+    background: var(--emma-surface-2);
+    color: var(--emma-title);
+}
+
+.emma-nav-link:hover .emma-icon { color: var(--emma-blue-600); }
+
+.emma-nav-link.active {
+    background: var(--emma-blue-50);
+    color: var(--emma-blue-700);
+    font-weight: 600;
+}
+
+.emma-nav-link.active .emma-icon { color: var(--emma-blue-600); }
+
+.emma-nav-link.active::before {
+    content: "";
+    position: absolute;
+    left: -10px;
+    top: 7px;
+    bottom: 7px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--emma-blue-600);
+}
+
+.emma-sidebar-footer {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--emma-card-border);
+}
+
+.emma-avatar {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--emma-blue-100);
+    color: var(--emma-blue-700);
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.emma-user-meta {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.emma-user-meta b {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--emma-title);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.emma-user-meta span {
+    font-size: 11px;
+    color: var(--emma-subtitle);
+}
+
+/* Sidebar compressa: solo icone */
+.nav-collapsed .emma-nav-label,
+.nav-collapsed .emma-brand-text,
+.nav-collapsed .emma-user-meta,
+.nav-collapsed .emma-sidebar-footer .emma-ghostbtn { display: none; }
+
+.nav-collapsed .emma-brand,
+.nav-collapsed .emma-sidebar-footer { justify-content: center; padding-left: 0; padding-right: 0; }
+
+.nav-collapsed .emma-nav-link { justify-content: center; padding-left: 0; padding-right: 0; }
+
+.nav-collapsed .emma-nav-group {
+    height: 1px;
+    padding: 0;
+    margin: 12px 10px;
+    font-size: 0;
+    background: var(--emma-card-border);
+}
+
+/* ---- Colonna principale ---- */
+
+.emma-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.emma-topbar {
+    height: var(--topbar-h);
+    flex: 0 0 var(--topbar-h);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    background: var(--emma-surface);
+    border-bottom: 1px solid var(--emma-card-border);
+}
+
+.emma-page-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--emma-title);
+    letter-spacing: -.1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-left: 4px;
+}
+
+.emma-ghostbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 34px;
+    min-width: 34px;
+    padding: 0 9px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--emma-subtitle);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .13s ease, color .13s ease, border-color .13s ease;
+}
+
+.emma-ghostbtn:hover {
+    background: var(--emma-surface-2);
+    border-color: var(--emma-card-border);
+    color: var(--emma-title);
+}
+
+.emma-ghostbtn .emma-icon { width: 18px; height: 18px; }
+
+.emma-view {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Le pagine esistenti restano dentro .emma-page: qui solo più respiro */
+.emma-view .emma-page {
+    padding: 20px 24px;
+}
+
+.emma-scrim { display: none; }
+
+/* ---------- Dashboard ---------- */
+
+.dash {
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 26px 26px 44px;
+}
+
+.dash-hero { margin-bottom: 6px; }
+
+.dash-hero h1 {
+    margin: 0 0 5px;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -.3px;
+    color: var(--emma-title);
+}
+
+.dash-hero p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--emma-subtitle);
+}
+
+.dash-section {
+    margin: 26px 0 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--emma-muted);
+}
+
+.dash-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+}
+
+.dash-card {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+    padding: 16px 16px 16px 15px;
+    background: var(--emma-surface);
+    border: 1px solid var(--emma-card-border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-1);
+    text-decoration: none;
+    transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+}
+
+.dash-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--emma-blue-200);
+    box-shadow: var(--sh-2);
+}
+
+.dash-card:active { transform: translateY(0); }
+
+.dash-ico {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    background: var(--emma-blue-50);
+    color: var(--emma-blue-600);
+}
+
+.dash-ico .emma-icon { width: 21px; height: 21px; }
+
+.dash-ico.tone-green { background: #E9F6EF; color: var(--emma-green); }
+.dash-ico.tone-violet { background: #F0EDFD; color: #6D5BD0; }
+.dash-ico.tone-amber { background: #FDF3E3; color: var(--emma-amber); }
+.dash-ico.tone-slate { background: #EDF1F6; color: #5A6B80; }
+
+.dash-txt {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.dash-txt b {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--emma-title);
+}
+
+.dash-txt p {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--emma-subtitle);
+}
+
+.emma-icon.dash-arrow {
+    width: 17px;
+    height: 17px;
+    margin-top: 12px;
+    color: var(--emma-blue-600);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity .14s ease, transform .14s ease;
+}
+
+.dash-card:hover .dash-arrow {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* ---------- Login ---------- */
+
+.login-shell {
+    display: flex;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--emma-surface);
+}
+
+.login-hero {
+    flex: 1 1 50%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 30px;
+    padding: 44px 48px;
+    color: #FFFFFF;
+    overflow: hidden;
+    background:
+        radial-gradient(120% 90% at 12% 8%, rgba(255, 255, 255, .22) 0%, rgba(255, 255, 255, 0) 55%),
+        linear-gradient(150deg, #0E4F8C 0%, #1668B0 38%, var(--emma-blue) 100%);
+}
+
+/* Trama leggera a griglia sul pannello di sinistra */
+.login-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, .07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .07) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(80% 70% at 70% 30%, #000 0%, transparent 75%);
+    pointer-events: none;
+}
+
+.login-hero > * { position: relative; z-index: 1; }
+
+.login-hero-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.login-hero-body h2 {
+    margin: 0 0 26px;
+    font-size: 30px;
+    line-height: 1.28;
+    font-weight: 700;
+    letter-spacing: -.4px;
+}
+
+.login-points {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+}
+
+.login-points li {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, .9);
+}
+
+.login-points .emma-icon {
+    width: 18px;
+    height: 18px;
+    color: rgba(255, 255, 255, .75);
+}
+
+.login-hero-foot {
+    font-size: 12px;
+    color: rgba(255, 255, 255, .6);
+}
+
+.login-panel {
+    flex: 1 1 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 36px 28px;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 380px;
+}
+
+.login-card h1 {
+    margin: 0 0 6px;
+    font-size: 25px;
+    font-weight: 700;
+    letter-spacing: -.3px;
+    color: var(--emma-title);
+}
+
+.login-sub {
+    margin: 0 0 26px;
+    font-size: 13.5px;
+    color: var(--emma-subtitle);
+}
+
+.login-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.login-field label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--emma-label);
+}
+
+.input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-wrap .emma-input { width: 100%; }
+
+.input-wrap .emma-icon.lead {
+    position: absolute;
+    left: 12px;
+    width: 17px;
+    height: 17px;
+    color: var(--emma-muted);
+    pointer-events: none;
+}
+
+.input-lg {
+    height: 44px;
+    padding: 0 14px 0 38px;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
+.input-lg.has-trail { padding-right: 42px; }
+
+.pwd-toggle {
+    position: absolute;
+    right: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    color: var(--emma-muted);
+    cursor: pointer;
+}
+
+.pwd-toggle:hover { background: var(--emma-surface-2); color: var(--emma-card-text); }
+.pwd-toggle .emma-icon { width: 18px; height: 18px; }
+
+.btn-lg {
+    width: 100%;
+    height: 46px;
+    margin-top: 8px;
+    border-radius: 10px;
+    font-size: 15px;
+    box-shadow: 0 6px 16px rgba(33, 150, 243, .28);
+}
+
+.btn-link {
+    display: block;
+    width: 100%;
+    margin-top: 14px;
+    padding: 6px;
+    background: none;
+    border: none;
+    font: inherit;
+    font-size: 13px;
+    color: var(--emma-subtitle);
+    cursor: pointer;
+}
+
+.btn-link:hover:not(:disabled) { color: var(--emma-blue-700); text-decoration: underline; }
+.btn-link:disabled { opacity: .5; cursor: default; }
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1024px) {
+    .login-hero { display: none; }
+    .login-panel { flex: 1 1 100%; }
+}
+
+@media (max-width: 900px) {
+    .emma-sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: var(--nav-w);
+        flex-basis: var(--nav-w);
+        transform: translateX(-100%);
+        box-shadow: var(--sh-3);
+        transition: transform .2s ease;
+    }
+
+    .emma-app.nav-collapsed .emma-sidebar {
+        width: var(--nav-w);
+        flex-basis: var(--nav-w);
+    }
+
+    .nav-collapsed .emma-nav-label,
+    .nav-collapsed .emma-brand-text,
+    .nav-collapsed .emma-user-meta,
+    .nav-collapsed .emma-sidebar-footer .emma-ghostbtn { display: revert; }
+
+    .nav-collapsed .emma-brand,
+    .nav-collapsed .emma-sidebar-footer,
+    .nav-collapsed .emma-nav-link { justify-content: flex-start; padding-left: 10px; padding-right: 10px; }
+
+    .nav-collapsed .emma-brand { padding-left: 16px; padding-right: 16px; }
+
+    .nav-collapsed .emma-nav-group {
+        height: auto;
+        font-size: 10.5px;
+        padding: 14px 10px 6px;
+        margin: 0;
+        background: none;
+    }
+
+    .emma-app.nav-mobile-open .emma-sidebar { transform: translateX(0); }
+
+    .emma-app.nav-mobile-open .emma-scrim {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 55;
+        background: rgba(15, 23, 42, .42);
+    }
+
+    .emma-view .emma-page { padding: 14px; }
+
+    .dash { padding: 18px 16px 32px; }
+
+    .hide-sm { display: none; }
+}
+
+@media (max-width: 620px) {
+    .dash-grid { grid-template-columns: 1fr; }
+    .login-panel { padding: 26px 20px; }
+}
+
+/* ---------- Pagine interne dentro la nuova shell ----------
+   Solo "contenitore": toolbar e griglie restano quelle esistenti,
+   con angoli morbidi e un filo d'ombra al posto del bordo secco.  */
+
+.emma-view .emma-toolbar {
+    background: var(--emma-surface);
+    border-color: var(--emma-card-border);
+    border-radius: var(--r-md);
+    box-shadow: var(--sh-1);
+    padding: 12px 14px;
+}
+
+.emma-view .emma-grid-wrapper {
+    border-color: var(--emma-card-border);
+    border-radius: var(--r-md);
+    box-shadow: var(--sh-1);
+}
+
+.emma-view table.emma-grid thead th {
+    background: #F2F5F9;
+    padding: 10px 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--emma-label);
+}
+
+.emma-view table.emma-grid tfoot td {
+    background: #F2F5F9;
+    padding: 10px 8px;
+}
+
+.emma-view table.emma-grid tbody td {
+    padding: 6px 8px;
+}
+
+.emma-view .conc-pane-title {
+    background: var(--emma-surface);
+    border-color: var(--emma-card-border);
+    border-radius: var(--r-md) var(--r-md) 0 0;
+}
+
+.emma-view .conc-pane .emma-grid-wrapper {
+    border-radius: 0 0 var(--r-md) var(--r-md);
+}
+
+.emma-view .pwd-window {
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-1);
+    padding: 24px;
+}
+
+/* Lo spaziatore esisteva solo dentro .emma-titlebar: serve anche in topbar. */
+.emma-topbar .emma-spacer {
+    flex: 1 1 auto;
 }
