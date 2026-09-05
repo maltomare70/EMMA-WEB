@@ -811,10 +811,11 @@
                     
                     var r = fattureGrid.Where(x=>x.IdRiga == id_fattura).FirstOrDefault();
                     if (r is not null) {
-                        if (conc.DifferenzaQta == 0) r.Selezionato = true;
+                       // if (conc.DifferenzaQta == 0) r.Selezionato = true;
                         r.Qta_Conc = conc.TotaleQtaBolle;
                         r.Note = conc.Note;
                         r.Stato = conc.StatoConciliazione;
+                        r.Selezionato = true;
                     }
 
                     var cod_fattura = conc.Fattura.Codice;
