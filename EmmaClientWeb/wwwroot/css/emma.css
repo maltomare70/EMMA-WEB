@@ -316,6 +316,22 @@ button.dashboard-card:disabled {
     white-space: nowrap;
 }
 
+/* Checkbox nella toolbar (es. filtro "Nascondi righe") */
+.emma-field > label.emma-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.emma-field > label.emma-check > input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    cursor: pointer;
+}
+
 /* ---------------- Pulsanti ---------------- */
 
 .btn {

@@ -40,6 +40,15 @@
 
             <div class="emma-separator"></div>
 
+            <div class="emma-field">
+                <label class="emma-check">
+                    <input type="checkbox" @bind="_nascondiRighe" disabled="@_busy" />
+                    <span>Nascondi righe</span>
+                </label>
+            </div>
+
+            <div class="emma-separator"></div>
+
             <button class="btn btn-blue" @onclick="CaricaDati_Click" disabled="@_busy">
                 <span>🔄</span><span>Carica Dati</span>
             </button>
@@ -166,7 +175,7 @@
                                             <td class="cell-right"></td>
                                         </tr>
 
-                                        if (docAperto)
+                                        if (docAperto && !_nascondiRighe)
                                         {
                                             foreach (var riga in d)
                                             {
@@ -306,7 +315,7 @@
                                             <td></td>
                                         </tr>
 
-                                        if (docAperto)
+                                        if (docAperto && !_nascondiRighe)
                                         {
                                             foreach (var riga in d)
                                             {
@@ -386,6 +395,10 @@
     private DateTime? _aData = DateTime.Today;
 
     private bool _busy;
+
+    /// <summary>Filtro "Nascondi righe": nasconde le sole righe di dettaglio articolo.</summary>
+    private bool _nascondiRighe;
+
     private EmmaDialogs _dialogs = default!;
 
     private IDocServiceClient _docService = default!;
@@ -441,14 +454,14 @@
         {
             _busy = true;
 
-            List<EmmaConciliaRighe> _righe = await _conciliazioneService.GetAllAsync();
+            List<EmmaConciliaRighe> righe = await _conciliazioneService.GetAllAsync("ORDINI-BOLLE");
 
             // Grid di sinistra: DDT / bolle
-            Bolle = await ToRighe(await GetDocs(TipoDocOrdini), _righe);
+            Bolle = await ToRighe(await GetDocs(TipoDocOrdini), righe);
 
             // Grid di destra: fatture + fatture accompagnatorie
             var fatture = await GetDocs(TipoDocDdt);            
-            Fatture = await ToRighe(fatture, _righe);
+            Fatture = await ToRighe(fatture, righe);
 
             InizializzaGruppi();
             RicalcolaSelezionate();
@@ -474,12 +487,12 @@
         };
 
         var docs = await _docService.GetDocsAsync(filtri);
-        List<EmmaConciliaRighe> _righe = await _conciliazioneService.GetAllAsync();
+        //List<EmmaConciliaRighe> _righe = await _conciliazioneService.GetAllAsync("ORDINI-BOLLE");
         return docs ?? new List<EmmaDoc>();
     }
 
     /// <summary>Appiattisce i documenti in righe articolo applicando il filtro date lato client.</summary>
-    private async Task<List<RigaConciliazione>> ToRighe(List<EmmaDoc> docs, List<EmmaConciliaRighe> _righe)
+    private async Task<List<RigaConciliazione>> ToRighe(List<EmmaDoc> docs, List<EmmaConciliaRighe> righe)
     {
         var risultato = new List<RigaConciliazione>();
 
@@ -493,7 +506,7 @@
 
             foreach (var articolo in doc.Articoli)
             {
-                var rigaConciliazione = _righe.FirstOrDefault(x => x.id_riga == articolo.Id_Riga);
+                var rigaConciliazione = righe.FirstOrDefault(x => x.id_riga == articolo.Id_Riga);
                 if (rigaConciliazione != null)
                 {
                     risultato.Add(new RigaConciliazione
@@ -700,7 +713,7 @@
             _busy = true;
 
             // Step 3: Salva le conciliazioni
-            await SalvaConciliazioni();
+            await SalvaConciliazioni("ORDINI-BOLLE");
 
             await _dialogs.MostraMessaggioAsync("Informazione", "Salvataggio conciliazioni terminato.");
         }
@@ -838,11 +851,11 @@
 
 
     /// <summary>Salva le conciliazioni via API (POST /api/v1/conciliazione).</summary>
-    private async Task SalvaConciliazioni()
+    private async Task SalvaConciliazioni(string tipo)
     {
         var righeBolle = Bolle.ToList();
         var righeFatture = Fatture.ToList();
-        await _conciliazioneService.SalvaConciliazione(righeBolle, righeFatture);
+        await _conciliazioneService.SalvaConciliazione(tipo, righeBolle, righeFatture);
 
     }
 }
