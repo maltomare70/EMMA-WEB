@@ -479,7 +479,26 @@
             var dettagli = new ObservableCollection<RigheDocumento>();
             foreach (var articolo in doc.Articoli)
             {
+                //Sono le righe del documento di conciliazione (Ordini-Bolle e Bolle-Fatture) associate al master corrente.
                 if ( righeDocumentoConciliazione is null) righeDocumentoConciliazione = await LoadRigheDocumentoConciliazione(articolo.Id_Master);
+
+
+                var r1 =  righeDocumentoConciliazione.Where(x => x.IdRiga?.ToLower() == articolo.Id_Riga?.ToLower() && x.Tipo == 1).ToList();
+                var r2 = righeDocumentoConciliazione.Where(x => x.IdRiga?.ToLower() == articolo.Id_Riga?.ToLower() && x.Tipo == 2).ToList();
+
+                if (r1.Count > 0 && r2.Count == 0)
+                {
+                    var codice = r1.FirstOrDefault()?.Codice;
+                    righeDocumentoConciliazione = await LoadRigheDocumentoConciliazioneByCodice(codice!);
+                    r2 = righeDocumentoConciliazione.Where(x => x.Codice?.ToLower() == codice?.ToLower() && x.IdMaster != articolo.Id_Master).ToList();
+                }
+
+                if (r2.Count > 0 && r1.Count == 0)
+                {
+                    var codice = r2.FirstOrDefault()?.Codice;
+                    righeDocumentoConciliazione = await LoadRigheDocumentoConciliazioneByCodice(codice!);
+                    r1 = righeDocumentoConciliazione.Where(x => x.Codice?.ToLower() == codice?.ToLower() && x.IdMaster != articolo.Id_Master).ToList();
+                }
 
                 dettagli.Add(new RigheDocumento
                 {
@@ -492,8 +511,8 @@
                     Imponibile = articolo.Imponibile,
                     Totale = articolo.Totale,
                     UnitaMisura = articolo.UnitaMisura,
-                    RigheDocumentoConciliazione1 = righeDocumentoConciliazione.Where(x => x.IdRiga?.ToLower() == articolo.Id_Riga?.ToLower() && x.Tipo == 1).ToList(),
-                    RigheDocumentoConciliazione2 = righeDocumentoConciliazione.Where(x => x.IdRiga?.ToLower() == articolo.Id_Riga?.ToLower() && x.Tipo == 2).ToList()
+                    RigheDocumentoConciliazione1 = r1,
+                    RigheDocumentoConciliazione2 = r2
                 });
             }
 
@@ -511,9 +530,10 @@
     }
 
 
-    private async Task<List<RigheDocumentoConciliazione>> LoadRigheDocumentoConciliazione(string idMaster)
+    
+    private async Task<List<RigheDocumentoConciliazione>> LoadRigheDocumentoConciliazioneByCodice(string codice)
     {
-        var items = await _conciliazioneServiceClient.GetRigheConciliazioneAsync(idMaster);
+        List<EmmaConciliaRigheDto> items = await _conciliazioneServiceClient.GetRigheConciliazioneByCodiceAsync(codice);
         if (items is null || items.Count == 0) return new List<RigheDocumentoConciliazione>();
 
         List<RigheDocumentoConciliazione> righe = new List<RigheDocumentoConciliazione>();
@@ -529,7 +549,34 @@
                 Flag = x.flag,
                 numero_doc_abbinamento = x.numero_doc_abbinamento,
                 data_doc_abbinamento = x.data_doc_abbinamento,
-                Tipo = x.tipo_doc
+                Tipo = x.tipo_doc,
+                Codice = x.codice,
+            });
+        });
+
+        return righe;
+    }
+
+    private async Task<List<RigheDocumentoConciliazione>> LoadRigheDocumentoConciliazione(string idMaster)
+    {
+        List<EmmaConciliaRigheDto> items = await _conciliazioneServiceClient.GetRigheConciliazioneAsync(idMaster);
+        if (items is null || items.Count == 0) return new List<RigheDocumentoConciliazione>();
+
+        List<RigheDocumentoConciliazione> righe = new List<RigheDocumentoConciliazione>();
+        items.ForEach(x =>
+        {
+            righe.Add(new RigheDocumentoConciliazione
+            {
+                IdMaster = x.id_master,
+                IdRiga = x.id_riga,
+                Qta = x.qta,
+                Qta_conc = x.qta_canc,
+                Delta = x.delta,
+                Flag = x.flag,
+                numero_doc_abbinamento = x.numero_doc_abbinamento,
+                data_doc_abbinamento = x.data_doc_abbinamento,
+                Tipo = x.tipo_doc,
+                Codice = x.codice,
             });
         });
 
