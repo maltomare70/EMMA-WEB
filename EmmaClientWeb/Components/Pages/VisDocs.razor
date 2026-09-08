@@ -238,7 +238,7 @@
             <div class="win-title">Conciliazione riga &mdash; @_conciliazioneTitolo</div>
 
             <div class="conc-body">
-                Conciliazione Ordini-Bolle
+                Righe Conciliazione 
                 <table class="emma-grid">
                     <thead>
                         <tr>
@@ -277,7 +277,7 @@
                     </tbody>
                 </table>
 
-                Conciliazione Bolle-Fatture
+                Righe Conciliazione
                 <table class="emma-grid">
                     <thead>
                         <tr>
@@ -481,11 +481,11 @@
             {
                 //Sono le righe del documento di conciliazione (Ordini-Bolle e Bolle-Fatture) associate al master corrente.
                 if ( righeDocumentoConciliazione is null) righeDocumentoConciliazione = await LoadRigheDocumentoConciliazione(articolo.Id_Master);
-
-
+                //per le bolle vengono caricate entrambe le strutture
                 var r1 =  righeDocumentoConciliazione.Where(x => x.IdRiga?.ToLower() == articolo.Id_Riga?.ToLower() && x.Tipo == 1).ToList();
                 var r2 = righeDocumentoConciliazione.Where(x => x.IdRiga?.ToLower() == articolo.Id_Riga?.ToLower() && x.Tipo == 2).ToList();
 
+                //per gli ordini devo caricare le righe bolle abbinate
                 if (r1.Count > 0 && r2.Count == 0)
                 {
                     var codice = r1.FirstOrDefault()?.Codice;
@@ -493,6 +493,7 @@
                     r2 = righeDocumentoConciliazione.Where(x => x.Codice?.ToLower() == codice?.ToLower() && x.IdMaster != articolo.Id_Master).ToList();
                 }
 
+                //per le fatture devo caricare le righe bolle abbinate
                 if (r2.Count > 0 && r1.Count == 0)
                 {
                     var codice = r2.FirstOrDefault()?.Codice;
