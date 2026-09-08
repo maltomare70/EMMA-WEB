@@ -1,0 +1,129 @@
+@page "/documenti/carica-documento"
+@layout MainLayout
+@using EmmaServer.Entities.Dtos
+@inject UserSession Session
+@inject EmmaServiceFactory Factory
+@inject NavigationManager Nav
+
+@* Versione ridotta di LoadDoc: solo il pulsante "Sfoglia ...".
+   La chiamata al server resta identica (POST multipart /api/v1/doc). *@
+
+<div class="emma-page @(_busy ? "busy" : "")">
+
+    <div class="emma-toolbar">
+        <div class="emma-toolbar-left">
+            <label class="btn btn-blue" style="margin:0">
+                <span>📁</span><span>Sfoglia ...</span>
+                <InputFile OnChange="OnFileSelected" accept=".pdf,.xml" style="display:none" disabled="@_busy" />
+            </label>
+
+            <span class="file-label @_fileLabelCss">@_nomeFile</span>
+        </div>
+
+        <div class="emma-toolbar-right">
+            @if (_pdfBytes is not null)
+            {
+                <button class="btn btn-dodger" @onclick="ApriPdf" disabled="@_busy">
+                    <span>📄</span><span>Vedi PDF</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="emma-grid-wrapper">
+        <div class="empty-state" style="padding:32px 16px;text-align:center">
+            @if (_esito.Length > 0)
+            {
+                @_esito
+            }
+            else
+            {
+                <text>Seleziona un file PDF o XML con "Sfoglia ..." per caricarlo.</text>
+            }
+        </div>
+    </div>
+</div>
+
+<PdfViewer @ref="_pdfViewer" />
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    private string _nomeFile = "Nessun file selezionato";
+    private string _fileLabelCss = string.Empty;
+    private string _esito = string.Empty;
+    private bool _busy;
+
+    private byte[]? _pdfBytes;
+    private string _pdfNome = "documento.pdf";
+
+    private EmmaDialogs _dialogs = default!;
+    private PdfViewer _pdfViewer = default!;
+    private IDocServiceClient _docService = default!;
+
+    // 50 MB come limite di upload
+    private const long MaxFileSize = 50L * 1024 * 1024;
+
+    protected override void OnInitialized()
+    {
+        if (!Session.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
+        _docService = Factory.Docs();
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+
+        try
+        {
+            _busy = true;
+            _esito = string.Empty;
+            _pdfBytes = null;
+
+            _nomeFile = $"Elaborazione in corso: {file.Name}...";
+            _fileLabelCss = "working";
+            StateHasChanged();
+
+            // Copiamo il contenuto in memoria: serve sia per l'API sia per il viewer PDF
+            using var ms = new MemoryStream();
+            await using (var stream = file.OpenReadStream(MaxFileSize))
+            {
+                await stream.CopyToAsync(ms);
+            }
+            var bytes = ms.ToArray();
+
+            if (file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                _pdfBytes = bytes;
+                _pdfNome = file.Name;
+            }
+
+            // Chiamata a Emma.Services: POST multipart /api/v1/doc
+            using var uploadStream = new MemoryStream(bytes);
+            DatiBolla? datiBolla = await _docService.InviaFileAsync(uploadStream, file.Name);
+
+            _nomeFile = file.Name;
+            _fileLabelCss = "done";
+            _esito = datiBolla is not null
+                ? $"Documento \"{file.Name}\" caricato correttamente."
+                : $"Documento \"{file.Name}\" inviato: nessun dato restituito dal server.";
+        }
+        catch (Exception ex)
+        {
+            _nomeFile = "Nessun file selezionato";
+            _fileLabelCss = string.Empty;
+            _esito = string.Empty;
+            _pdfBytes = null;
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void ApriPdf()
+    {
+        if (_pdfBytes is not null) _pdfViewer.Mostra(_pdfBytes, _pdfNome);
+    }
+}

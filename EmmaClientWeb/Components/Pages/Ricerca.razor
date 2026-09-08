@@ -1,0 +1,128 @@
+@page "/documenti/ricerca"
+@layout MainLayout
+@inject UserSession Session
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@* Ricerca conversazionale. La risposta è per ora fissa ("OK"):
+   il punto di innesto della chiamata server è RispondiAsync(). *@
+
+<div class="emma-page chat-page">
+
+    <div class="chat-log" id="chat-log">
+        @if (_messaggi.Count == 0)
+        {
+            <div class="chat-empty">
+                <EmmaIcon Name="search" />
+                <b>Cosa vuoi cercare?</b>
+                <p>Scrivi una domanda in linguaggio naturale e premi Invio.</p>
+            </div>
+        }
+
+        @foreach (var m in _messaggi)
+        {
+            <div class="chat-row @(m.Utente ? "mine" : "")">
+                <span class="chat-avatar">@(m.Utente ? Iniziale : "E")</span>
+                <div class="chat-bubble">
+                    <span class="chat-text">@m.Testo</span>
+                    <span class="chat-time">@m.Ora.ToString("HH:mm")</span>
+                </div>
+            </div>
+        }
+
+        @if (_busy)
+        {
+            <div class="chat-row">
+                <span class="chat-avatar">E</span>
+                <div class="chat-bubble">
+                    <span class="chat-typing"><i></i><i></i><i></i></span>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="chat-composer">
+        <input class="emma-input chat-input" placeholder="Scrivi la tua richiesta..."
+               @bind="_testo" @bind:event="oninput" @onkeydown="OnKeyDown" disabled="@_busy" />
+
+        <button class="btn btn-blue" @onclick="Invia" disabled="@(_busy || string.IsNullOrWhiteSpace(_testo))">
+            <span>➤</span><span>Invia</span>
+        </button>
+
+        <button class="btn btn-grey" @onclick="Pulisci" disabled="@(_busy || _messaggi.Count == 0)">
+            <span>✖</span><span>Pulisci</span>
+        </button>
+    </div>
+</div>
+
+@code {
+    private sealed record Messaggio(bool Utente, string Testo, DateTime Ora);
+
+    private readonly List<Messaggio> _messaggi = new();
+    private string _testo = string.Empty;
+    private bool _busy;
+
+    private string Iniziale => string.IsNullOrWhiteSpace(Session.User)
+        ? "?"
+        : Session.User.Trim()[..1].ToUpperInvariant();
+
+    protected override void OnInitialized()
+    {
+        if (!Session.IsAuthenticated) Nav.NavigateTo("/login");
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey) await Invia();
+    }
+
+    private async Task Invia()
+    {
+        var domanda = _testo.Trim();
+        if (domanda.Length == 0 || _busy) return;
+
+        _messaggi.Add(new Messaggio(true, domanda, DateTime.Now));
+        _testo = string.Empty;
+        _busy = true;
+        await ScrollInFondo();
+
+        try
+        {
+            var risposta = await RispondiAsync(domanda);
+            _messaggi.Add(new Messaggio(false, risposta, DateTime.Now));
+        }
+        finally
+        {
+            _busy = false;
+            await ScrollInFondo();
+        }
+    }
+
+    /// <summary>
+    /// Punto di innesto della ricerca lato server: per ora risponde sempre "OK".
+    /// </summary>
+    private static async Task<string> RispondiAsync(string domanda)
+    {
+        await Task.Delay(300); // simula la latenza della chiamata
+        return "OK";
+    }
+
+    private void Pulisci()
+    {
+        _messaggi.Clear();
+        _testo = string.Empty;
+    }
+
+    private async Task ScrollInFondo()
+    {
+        StateHasChanged();
+        try
+        {
+            await JS.InvokeVoidAsync("emma.scrollToBottom", "chat-log");
+        }
+        catch
+        {
+            // il prerender non ha ancora il DOM: ininfluente
+        }
+    }
+}

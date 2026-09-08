@@ -13,5 +13,11 @@ window.emma = {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+    },
+
+    // Porta un contenitore scrollabile in fondo (chat di Ricerca)
+    scrollToBottom: function (id) {
+        const el = document.getElementById(id);
+        if (el) el.scrollTop = el.scrollHeight;
     }
 };

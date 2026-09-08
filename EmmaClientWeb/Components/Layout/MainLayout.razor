@@ -1,4 +1,4 @@
-@inherits LayoutComponentBase
+﻿@inherits LayoutComponentBase
 @implements IDisposable
 @inject UserSession Session
 @inject NavigationManager Nav
@@ -123,6 +123,11 @@ else
 
     private static readonly GruppoMenu[] Menu =
     [
+        new GruppoMenu("Documenti",
+        [
+            new VoceMenu("/documenti/carica-documento", "doc-upload", "Carica Documento"),
+            new VoceMenu("/documenti/ricerca", "search", "Ricerca")
+        ]),
         new GruppoMenu("Ordini Bolle Fatture",
         [
             new VoceMenu("/documenti/carica", "upload", "Carica Ordini Bolle Fatture"),
@@ -175,6 +180,8 @@ else
     private string Title => Path switch
     {
         "dashboard" => "Dashboard",
+        "documenti/carica-documento" => "Carica Documento",
+        "documenti/ricerca" => "Ricerca",
         "documenti/carica" => "Carica Ordini Bolle Fatture",
         "documenti" => "Visualizza Ordini Bolle Fatture",
         "fornitori" => "Fornitori",

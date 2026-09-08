@@ -1,4 +1,4 @@
-@page "/dashboard"
+﻿@page "/dashboard"
 @layout MainLayout
 @inject UserSession Session
 @inject NavigationManager Nav
@@ -10,6 +10,27 @@
     <div class="dash-hero">
         <h1>Ciao @Session.User</h1>
         <p>Seleziona un'operazione per iniziare, oppure usa il menu di navigazione.</p>
+    </div>
+
+    <div class="dash-section">Documenti</div>
+    <div class="dash-grid">
+        <a class="dash-card" href="/documenti/carica-documento">
+            <span class="dash-ico"><EmmaIcon Name="doc-upload" /></span>
+            <span class="dash-txt">
+                <b>Carica Documento</b>
+                <p>Carica un documento PDF o XML.</p>
+            </span>
+            <EmmaIcon Name="arrow" Class="dash-arrow" />
+        </a>
+
+        <a class="dash-card" href="/documenti/ricerca">
+            <span class="dash-ico"><EmmaIcon Name="search" /></span>
+            <span class="dash-txt">
+                <b>Ricerca</b>
+                <p>Cerca tra i documenti scrivendo una domanda.</p>
+            </span>
+            <EmmaIcon Name="arrow" Class="dash-arrow" />
+        </a>
     </div>
 
     <div class="dash-section">Ordini Bolle Fatture</div>
