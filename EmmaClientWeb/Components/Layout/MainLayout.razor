@@ -123,15 +123,15 @@ else
 
     private static readonly GruppoMenu[] Menu =
     [
-        new GruppoMenu("Documenti",
+        new GruppoMenu("Ordini Bolle Fatture",
         [
-            new VoceMenu("/documenti/carica", "upload", "Carica Documenti"),
-            new VoceMenu("/documenti", "files", "Visualizza Documenti")
+            new VoceMenu("/documenti/carica", "upload", "Carica Ordini Bolle Fatture"),
+            new VoceMenu("/documenti", "files", "Visualizza Ordini Bolle Fatture")
         ]),
-        new GruppoMenu("Anagrafiche",
+        new GruppoMenu("Anagrafiche Fornitori",
         [
             new VoceMenu("/fornitori", "truck", "Fornitori"),
-            new VoceMenu("/articoli", "box", "Articoli")
+            new VoceMenu("/articoli", "box", "Articoli Fornitore")
         ]),
         new GruppoMenu("Conciliazione",
         [
@@ -175,8 +175,8 @@ else
     private string Title => Path switch
     {
         "dashboard" => "Dashboard",
-        "documenti/carica" => "Caricamento Documenti",
-        "documenti" => "Visualizzatore Documenti",
+        "documenti/carica" => "Carica Ordini Bolle Fatture",
+        "documenti" => "Visualizza Ordini Bolle Fatture",
         "fornitori" => "Fornitori",
         "articoli" => "Articoli Fornitore",
         "conciliazione" => "Conciliazione Bolle / Fatture",
