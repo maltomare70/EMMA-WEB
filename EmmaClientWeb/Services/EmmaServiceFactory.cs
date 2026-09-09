@@ -42,4 +42,17 @@ public class EmmaServiceFactory
 
     public IUserServiceClient Users()
         => new UserServiceClient(ServerUrl, _session.User, _session.Password);
+
+    /// <summary>
+    /// Client del database vettoriale (/api/v1/document).
+    ///
+    /// Usa un HttpClient dedicato con timeout lungo: l'indicizzazione di un PDF e'
+    /// sincrona e comprende estrazione, chunking e chiamate di embedding, quindi puo'
+    /// superare di parecchio i 100 secondi di default di HttpClient.
+    /// </summary>
+    public IRagServiceClient Rag()
+        => new RagServiceClient(RagHttpClient, ServerUrl, _session.User, _session.Password);
+
+    // Statico e condiviso: un HttpClient per richiesta esaurirebbe i socket.
+    private static readonly HttpClient RagHttpClient = new() { Timeout = TimeSpan.FromMinutes(10) };
 }

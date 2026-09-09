@@ -1,20 +1,22 @@
 @page "/documenti/carica-documento"
 @layout MainLayout
 @using EmmaServer.Entities.Dtos
+@using Emma.Services.Services
 @inject UserSession Session
 @inject EmmaServiceFactory Factory
 @inject NavigationManager Nav
 
-@* Versione ridotta di LoadDoc: solo il pulsante "Sfoglia ...".
-   La chiamata al server resta identica (POST multipart /api/v1/doc). *@
+@* Caricamento di un PDF nel database vettoriale.
+   POST multipart /api/v1/document: il server estrae il testo, lo spezza in chunk
+   da 512 token con sovrapposizione, li vettorizza e li salva su pgvector. *@
 
 <div class="emma-page @(_busy ? "busy" : "")">
 
     <div class="emma-toolbar">
         <div class="emma-toolbar-left">
-            <label class="btn btn-blue" style="margin:0">
+            <label class="btn btn-blue @(_busy ? "btn-disabled" : "")" style="margin:0">
                 <span>📁</span><span>Sfoglia ...</span>
-                <InputFile OnChange="OnFileSelected" accept=".pdf,.xml" style="display:none" disabled="@_busy" />
+                <InputFile OnChange="OnFileSelected" accept=".pdf" style="display:none" disabled="@_busy" />
             </label>
 
             <span class="file-label @_fileLabelCss">@_nomeFile</span>
@@ -23,24 +25,84 @@
         <div class="emma-toolbar-right">
             @if (_pdfBytes is not null)
             {
-                <button class="btn btn-dodger" @onclick="ApriPdf" disabled="@_busy">
+                <button class="btn btn-dodger" @onclick="ApriPdfCaricato" disabled="@_busy">
                     <span>📄</span><span>Vedi PDF</span>
                 </button>
             }
+            <button class="btn btn-default" @onclick="CaricaArchivio" disabled="@_busy">🔄 Ricarica</button>
         </div>
     </div>
 
-    <div class="emma-grid-wrapper">
-        <div class="empty-state" style="padding:32px 16px;text-align:center">
-            @if (_esito.Length > 0)
+    @if (_esito is not null)
+    {
+        <div class="rag-esito @(_esito.AlreadyIndexed ? "warn" : "ok")">
+            <b>@_esito.FileName</b>
+            @if (_esito.AlreadyIndexed)
             {
-                @_esito
+                <span>era già in archivio: non è stato reindicizzato.</span>
             }
             else
             {
-                <text>Seleziona un file PDF o XML con "Sfoglia ..." per caricarlo.</text>
+                <span>
+                    indicizzato: @_esito.Pages pagine, @_esito.Chunks chunk,
+                    @_esito.Tokens token, modello @_esito.Model (@_esito.Dimension dim)
+                    in @(FormattaDurata(_esito.DurationMs)).
+                </span>
             }
         </div>
+    }
+
+    <div class="emma-grid-wrapper">
+        <table class="emma-grid">
+            <thead>
+                <tr>
+                    <th>Documento</th>
+                    <th style="width:90px">Pagine</th>
+                    <th style="width:90px">Chunk</th>
+                    <th style="width:110px">Stato</th>
+                    <th style="width:220px">Modello</th>
+                    <th style="width:150px">Data Creazione</th>
+                    <th style="width:170px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_archivio.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            @if (_archivioCaricato)
+                            {
+                                <text>Nessun documento indicizzato. Usa "Sfoglia ..." per caricarne uno.</text>
+                            }
+                            else
+                            {
+                                <text>Caricamento dell'archivio in corso...</text>
+                            }
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var d in _archivio)
+                    {
+                        <tr @key="d.id">
+                            <td title="@d.file_name">@d.file_name</td>
+                            <td class="cell-right">@d.pagine</td>
+                            <td class="cell-right">@d.chunk_count</td>
+                            <td>
+                                <span class="rag-stato @StatoCss(d.stato)" title="@d.messaggio">@StatoTesto(d.stato)</span>
+                            </td>
+                            <td title="@d.embedding_model">@d.embedding_model</td>
+                            <td>@d.data_creazione.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="cell-right">
+                                <button class="btn btn-mini btn-dodger" @onclick="() => ApriPdfArchivio(d)" disabled="@_busy">📄 PDF</button>
+                                <button class="btn btn-mini btn-red2" @onclick="() => Elimina(d)" disabled="@_busy">🗑 Elimina</button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
     </div>
 </div>
 
@@ -50,15 +112,18 @@
 @code {
     private string _nomeFile = "Nessun file selezionato";
     private string _fileLabelCss = string.Empty;
-    private string _esito = string.Empty;
+    private DocumentResponse? _esito;
     private bool _busy;
 
     private byte[]? _pdfBytes;
     private string _pdfNome = "documento.pdf";
 
+    private List<RagDocument> _archivio = new();
+    private bool _archivioCaricato;
+
     private EmmaDialogs _dialogs = default!;
     private PdfViewer _pdfViewer = default!;
-    private IDocServiceClient _docService = default!;
+    private IRagServiceClient _rag = default!;
 
     // 50 MB come limite di upload
     private const long MaxFileSize = 50L * 1024 * 1024;
@@ -66,8 +131,21 @@
     protected override void OnInitialized()
     {
         if (!Session.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
-        _docService = Factory.Docs();
+        _rag = Factory.Rag();
     }
+
+    // Il caricamento avviene dopo il primo render, quando i @ref dei dialog sono valorizzati
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Session.IsAuthenticated) return;
+
+        await CaricaArchivio();
+        StateHasChanged();
+    }
+
+    // ------------------------------------------------------------------
+    // Upload
+    // ------------------------------------------------------------------
 
     private async Task OnFileSelected(InputFileChangeEventArgs e)
     {
@@ -77,14 +155,14 @@
         try
         {
             _busy = true;
-            _esito = string.Empty;
+            _esito = null;
             _pdfBytes = null;
 
-            _nomeFile = $"Elaborazione in corso: {file.Name}...";
+            _nomeFile = $"Indicizzazione in corso: {file.Name}...";
             _fileLabelCss = "working";
             StateHasChanged();
 
-            // Copiamo il contenuto in memoria: serve sia per l'API sia per il viewer PDF
+            // Il contenuto va in memoria una volta sola: serve sia per l'API sia per il viewer
             using var ms = new MemoryStream();
             await using (var stream = file.OpenReadStream(MaxFileSize))
             {
@@ -92,27 +170,23 @@
             }
             var bytes = ms.ToArray();
 
-            if (file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
-            {
-                _pdfBytes = bytes;
-                _pdfNome = file.Name;
-            }
+            _pdfBytes = bytes;
+            _pdfNome = file.Name;
 
-            // Chiamata a Emma.Services: POST multipart /api/v1/doc
+            // POST multipart /api/v1/document
             using var uploadStream = new MemoryStream(bytes);
-            DatiBolla? datiBolla = await _docService.InviaFileAsync(uploadStream, file.Name);
+            _esito = await _rag.IndicizzaPdfAsync(uploadStream, file.Name);
 
             _nomeFile = file.Name;
             _fileLabelCss = "done";
-            _esito = datiBolla is not null
-                ? $"Documento \"{file.Name}\" caricato correttamente."
-                : $"Documento \"{file.Name}\" inviato: nessun dato restituito dal server.";
+
+            await CaricaArchivio();
         }
         catch (Exception ex)
         {
             _nomeFile = "Nessun file selezionato";
             _fileLabelCss = string.Empty;
-            _esito = string.Empty;
+            _esito = null;
             _pdfBytes = null;
             await _dialogs.ErroreAsync(ex.Message);
         }
@@ -122,8 +196,103 @@
         }
     }
 
-    private void ApriPdf()
+    // ------------------------------------------------------------------
+    // Archivio
+    // ------------------------------------------------------------------
+
+    private async Task CaricaArchivio()
+    {
+        try
+        {
+            _archivio = await _rag.GetDocumentiAsync();
+            _archivioCaricato = true;
+        }
+        catch (Exception ex)
+        {
+            _archivioCaricato = true;
+            await _dialogs.ErroreAsync($"Impossibile leggere l'archivio: {ex.Message}");
+        }
+    }
+
+    private async Task Elimina(RagDocument doc)
+    {
+        if (!await _dialogs.ConfermaAsync(
+            $"Eliminare \"{doc.file_name}\" dal database vettoriale? Verranno cancellati anche i suoi {doc.chunk_count} chunk."))
+            return;
+
+        try
+        {
+            _busy = true;
+            StateHasChanged();
+
+            if (await _rag.EliminaDocumentoAsync(doc.id))
+                await CaricaArchivio();
+            else
+                await _dialogs.ErroreAsync($"Documento \"{doc.file_name}\" non trovato.");
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // PDF
+    // ------------------------------------------------------------------
+
+    private void ApriPdfCaricato()
     {
         if (_pdfBytes is not null) _pdfViewer.Mostra(_pdfBytes, _pdfNome);
     }
+
+    private async Task ApriPdfArchivio(RagDocument doc)
+    {
+        try
+        {
+            _busy = true;
+            StateHasChanged();
+
+            var bytes = await _rag.ScaricaPdfAsync(doc.id);
+            if (bytes is null || bytes.Length == 0)
+            {
+                await _dialogs.InfoAsync($"Nessun PDF allegato per \"{doc.file_name}\".");
+                return;
+            }
+
+            _pdfViewer.Mostra(bytes, doc.file_name);
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Utility di presentazione
+    // ------------------------------------------------------------------
+
+    private static string StatoTesto(int stato) => stato switch
+    {
+        1 => "Indicizzato",
+        0 => "In corso",
+        _ => "Errore"
+    };
+
+    private static string StatoCss(int stato) => stato switch
+    {
+        1 => "ok",
+        0 => "work",
+        _ => "err"
+    };
+
+    private static string FormattaDurata(long ms)
+        => ms < 1000 ? $"{ms} ms" : $"{ms / 1000.0:0.0} s";
 }

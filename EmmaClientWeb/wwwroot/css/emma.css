@@ -1985,3 +1985,150 @@ body {
 @media (max-width: 640px) {
     .chat-row { max-width: 95%; }
 }
+
+/* ============================================================
+   Database vettoriale: Carica Documento e Ricerca semantica
+   ============================================================ */
+
+/* --- esito dell'indicizzazione (pagina Carica Documento) --- */
+
+.rag-esito {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--emma-card-text);
+    background: var(--emma-surface);
+    border: 1px solid var(--emma-card-border);
+    border-left: 4px solid var(--emma-grey);
+    border-radius: var(--r-md);
+    box-shadow: var(--sh-1);
+}
+
+.rag-esito.ok { border-left-color: var(--emma-green); }
+.rag-esito.warn { border-left-color: var(--emma-amber); }
+.rag-esito b { color: var(--emma-title); }
+
+/* --- stato del documento in griglia --- */
+
+.rag-stato {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.rag-stato.ok { color: #1B6B41; background: #E6F5EC; }
+.rag-stato.work { color: #8A5A0B; background: #FDF3E0; }
+.rag-stato.err { color: #96302E; background: #FBE9E8; }
+
+/* Il pulsante "Sfoglia" e' una <label>: :disabled non si applica,
+   la classe viene messa dal componente quando la pagina e' occupata. */
+.btn-disabled {
+    opacity: .55;
+    pointer-events: none;
+}
+
+/* --- parametri della ricerca, sopra il composer --- */
+
+.chat-params {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+    color: var(--emma-subtitle);
+    background: var(--emma-surface-2);
+    border: 1px solid var(--emma-card-border);
+    border-radius: var(--r-md);
+}
+
+.chat-params label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chat-params .emma-input {
+    width: auto;
+    min-width: 96px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* --- passaggi trovati dentro la bolla della chat --- */
+
+.rag-fonti {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.rag-fonte {
+    padding: 8px 10px;
+    background: var(--emma-surface-2);
+    border: 1px solid var(--emma-card-border);
+    border-radius: var(--r-sm);
+}
+
+.rag-fonte-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: var(--emma-subtitle);
+}
+
+.rag-fonte-num {
+    font-weight: 700;
+    color: var(--emma-blue-700);
+}
+
+.rag-fonte-file {
+    max-width: 260px;
+    overflow: hidden;
+    font-weight: 600;
+    color: var(--emma-title);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rag-fonte-score {
+    padding: 1px 7px;
+    font-weight: 600;
+    color: var(--emma-blue-700);
+    background: var(--emma-blue-50);
+    border-radius: 999px;
+}
+
+.rag-fonte-head .btn-mini {
+    margin-left: auto;
+}
+
+/* I chunk sono lunghi: il testo scorre dentro il proprio riquadro
+   invece di allungare all'infinito la bolla. */
+.rag-fonte-testo {
+    max-height: 190px;
+    overflow-y: auto;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--emma-card-text);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@media (max-width: 640px) {
+    .rag-fonte-file { max-width: 150px; }
+    .chat-params { gap: 10px; }
+}

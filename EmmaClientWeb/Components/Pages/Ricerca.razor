@@ -1,11 +1,15 @@
 @page "/documenti/ricerca"
 @layout MainLayout
+@using EmmaServer.Entities.Dtos
+@using Emma.Services.Services
 @inject UserSession Session
+@inject EmmaServiceFactory Factory
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
-@* Ricerca conversazionale. La risposta è per ora fissa ("OK"):
-   il punto di innesto della chiamata server è RispondiAsync(). *@
+@* Ricerca semantica sul database vettoriale.
+   POST /api/v1/document/search: la domanda viene vettorizzata con taskType
+   RETRIEVAL_QUERY e confrontata con i chunk tramite distanza coseno. *@
 
 <div class="emma-page chat-page">
 
@@ -25,6 +29,29 @@
                 <span class="chat-avatar">@(m.Utente ? Iniziale : "E")</span>
                 <div class="chat-bubble">
                     <span class="chat-text">@m.Testo</span>
+
+                    @if (m.Fonti is { Count: > 0 } fonti)
+                    {
+                        <div class="rag-fonti">
+                            @for (int i = 0; i < fonti.Count; i++)
+                            {
+                                var f = fonti[i];
+                                var n = i + 1;
+                                <div class="rag-fonte">
+                                    <div class="rag-fonte-head">
+                                        <span class="rag-fonte-num">[@n]</span>
+                                        <span class="rag-fonte-file" title="@f.FileName">@f.FileName</span>
+                                        <span class="rag-fonte-pag">pag. @f.Page</span>
+                                        <span class="rag-fonte-score" title="Similarità coseno">@f.Score.ToString("P0")</span>
+                                        <button class="btn btn-mini btn-dodger" title="Apri il PDF"
+                                                @onclick="() => ApriPdf(f)" disabled="@_busy">📄</button>
+                                    </div>
+                                    <div class="rag-fonte-testo">@f.Content</div>
+                                </div>
+                            }
+                        </div>
+                    }
+
                     <span class="chat-time">@m.Ora.ToString("HH:mm")</span>
                 </div>
             </div>
@@ -41,6 +68,27 @@
         }
     </div>
 
+    <div class="chat-params">
+        <label>
+            Risultati
+            <select class="emma-input" @bind="_topK" disabled="@_busy">
+                <option value="3">3</option>
+                <option value="5">5</option>
+                <option value="10">10</option>
+            </select>
+        </label>
+
+        <label>
+            Rilevanza minima
+            <select class="emma-input" @bind="_minScoreSel" disabled="@_busy">
+                <option value="0">nessuna</option>
+                <option value="0.5">50%</option>
+                <option value="0.65">65%</option>
+                <option value="0.8">80%</option>
+            </select>
+        </label>
+    </div>
+
     <div class="chat-composer">
         <input class="emma-input chat-input" placeholder="Scrivi la tua richiesta..."
                @bind="_testo" @bind:event="oninput" @onkeydown="OnKeyDown" disabled="@_busy" />
@@ -55,12 +103,28 @@
     </div>
 </div>
 
+<PdfViewer @ref="_pdfViewer" />
+<EmmaDialogs @ref="_dialogs" />
+
 @code {
-    private sealed record Messaggio(bool Utente, string Testo, DateTime Ora);
+    private sealed record Messaggio(bool Utente, string Testo, DateTime Ora, List<RagSearchResult>? Fonti = null);
 
     private readonly List<Messaggio> _messaggi = new();
     private string _testo = string.Empty;
     private bool _busy;
+
+    private int _topK = 5;
+
+    // Legata come stringa e convertita in cultura invariante: con it-IT il binding
+    // diretto su double leggerebbe "0.5" come 5.
+    private string _minScoreSel = "0";
+
+    private double MinScore =>
+        double.TryParse(_minScoreSel, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : 0;
+
+    private EmmaDialogs _dialogs = default!;
+    private PdfViewer _pdfViewer = default!;
+    private IRagServiceClient _rag = default!;
 
     private string Iniziale => string.IsNullOrWhiteSpace(Session.User)
         ? "?"
@@ -68,7 +132,8 @@
 
     protected override void OnInitialized()
     {
-        if (!Session.IsAuthenticated) Nav.NavigateTo("/login");
+        if (!Session.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
+        _rag = Factory.Rag();
     }
 
     private async Task OnKeyDown(KeyboardEventArgs e)
@@ -88,8 +153,33 @@
 
         try
         {
-            var risposta = await RispondiAsync(domanda);
-            _messaggi.Add(new Messaggio(false, risposta, DateTime.Now));
+            // La soglia a 0 vuol dire "nessun filtro": si passa null al server
+            double? soglia = MinScore > 0 ? MinScore : null;
+
+            var risultati = await _rag.CercaAsync(domanda, _topK, minScore: soglia);
+
+            if (risultati.Count == 0)
+            {
+                _messaggi.Add(new Messaggio(false,
+                    soglia is null
+                        ? "Non ho trovato nulla nei documenti indicizzati."
+                        : $"Nessun passaggio sopra la soglia del {soglia:P0}. Prova ad abbassare la rilevanza minima.",
+                    DateTime.Now));
+            }
+            else
+            {
+                int documenti = risultati.Select(r => r.DocId).Distinct().Count();
+
+                string intestazione = documenti == 1
+                    ? $"Ho trovato {risultati.Count} passaggi in 1 documento:"
+                    : $"Ho trovato {risultati.Count} passaggi in {documenti} documenti:";
+
+                _messaggi.Add(new Messaggio(false, intestazione, DateTime.Now, risultati));
+            }
+        }
+        catch (Exception ex)
+        {
+            _messaggi.Add(new Messaggio(false, $"Ricerca non riuscita: {ex.Message}", DateTime.Now));
         }
         finally
         {
@@ -98,13 +188,30 @@
         }
     }
 
-    /// <summary>
-    /// Punto di innesto della ricerca lato server: per ora risponde sempre "OK".
-    /// </summary>
-    private static async Task<string> RispondiAsync(string domanda)
+    private async Task ApriPdf(RagSearchResult fonte)
     {
-        await Task.Delay(300); // simula la latenza della chiamata
-        return "OK";
+        try
+        {
+            _busy = true;
+            StateHasChanged();
+
+            var bytes = await _rag.ScaricaPdfAsync(fonte.DocId);
+            if (bytes is null || bytes.Length == 0)
+            {
+                await _dialogs.InfoAsync($"Nessun PDF allegato per \"{fonte.FileName}\".");
+                return;
+            }
+
+            _pdfViewer.Mostra(bytes, fonte.FileName);
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private void Pulisci()

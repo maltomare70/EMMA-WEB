@@ -165,3 +165,31 @@ EMMA-WEB/                         ← radice di questo repo Git
         ├── js/emma.js
         └── img/*.png
 ```
+
+## Database vettoriale (Carica Documento / Ricerca)
+
+Le due voci di menu sotto **Documenti** sono agganciate agli endpoint
+`/api/v1/document` di EmmaServer tramite `RagServiceClient` di `Emma.Services`
+(`EmmaServiceFactory.Rag()`).
+
+**Carica Documento** (`/documenti/carica-documento`) manda il PDF in `POST
+/api/v1/document`: il server ne estrae il testo, lo spezza in chunk da 512 token
+con sovrapposizione, li vettorizza con Gemini e li salva su pgvector. La pagina
+mostra l'esito reale (pagine, chunk, token, modello, durata) e, sotto, l'archivio
+dei documenti indicizzati con apertura del PDF e cancellazione.
+
+**Ricerca** (`/documenti/ricerca`) è una chat: la domanda va in `POST
+/api/v1/document/search` e la risposta elenca i passaggi trovati con file, pagina
+e percentuale di rilevanza. Da ogni passaggio si apre il PDF sorgente nel
+`PdfViewer` già usato dalle altre pagine. Numero di risultati e rilevanza minima
+si regolano dalla barra sopra il composer.
+
+Note di implementazione:
+
+- `EmmaServiceFactory.Rag()` usa un `HttpClient` dedicato con timeout di 10
+  minuti: l'indicizzazione è sincrona e sui PDF lunghi supera abbondantemente i
+  100 secondi di default.
+- La soglia di rilevanza è legata come stringa e convertita in cultura
+  invariante: con `it-IT` un binding diretto su `double` leggerebbe `0.5` come 5.
+- Un file già caricato non viene reindicizzato: il server lo riconosce
+  dall'hash SHA-256 e la pagina lo segnala.
