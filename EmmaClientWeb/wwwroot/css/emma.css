@@ -743,6 +743,22 @@ table.emma-grid input.cell-edit[readonly] {
     font-weight: 600;
 }
 
+/* Gruppo con singola checkbox (es. "Utente abilitato"): testo a fianco del box */
+.form-body .group.group-check > label.emma-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.form-body .group.group-check > label.emma-check > input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    cursor: pointer;
+}
+
 .form-body .dialog-actions {
     justify-content: flex-end;
     gap: 10px;
@@ -1586,6 +1602,62 @@ body {
     width: 18px;
     height: 18px;
     color: rgba(255, 255, 255, .75);
+}
+
+/* --- Slide rotanti del pannello di sinistra --- */
+
+/* Altezza minima fissa: cambiando slide il pannello non deve "saltare" */
+.login-slides {
+    min-height: 250px;
+}
+
+.login-slide {
+    animation: login-slide-in .5s ease both;
+}
+
+@keyframes login-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* Indicatori cliccabili sotto le slide */
+.login-dots {
+    display: flex;
+    gap: 8px;
+    margin-top: 26px;
+}
+
+.login-dot {
+    width: 22px;
+    height: 4px;
+    padding: 0;
+    border: 0;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, .28);
+    cursor: pointer;
+    transition: background .25s ease, width .25s ease;
+}
+
+.login-dot:hover {
+    background: rgba(255, 255, 255, .5);
+}
+
+.login-dot.on {
+    width: 34px;
+    background: rgba(255, 255, 255, .9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .login-slide {
+        animation: none;
+    }
 }
 
 .login-hero-foot {

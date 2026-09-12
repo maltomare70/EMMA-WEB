@@ -3,8 +3,10 @@
 @inject UserSession Session
 @inject EmmaServiceFactory Factory
 @inject NavigationManager Nav
+@implements IDisposable
 
-@* Schermata di accesso: pannello di presentazione + form credenziali. *@
+@* Schermata di accesso: pannello di presentazione + form credenziali.
+   Il pannello di sinistra ruota fra più slide, una ogni 3 secondi. *@
 
 <div class="login-shell @(_busy ? "busy" : "")">
 
@@ -17,13 +19,27 @@
             </span>
         </div>
 
-        <div class="login-hero-body">
-            <h2>I tuoi documenti sotto controllo,<br />dal caricamento alla conciliazione.</h2>
-            <ul class="login-points">
-                <li><EmmaIcon Name="upload" /> Acquisizione di bolle e fatture da PDF o XML</li>
-                <li><EmmaIcon Name="compare" /> Conciliazione tra ordini, bolle e fatture</li>
-                <li><EmmaIcon Name="ai" /> Procedure eseguite con l'ausilio di Intelligenza Artificiale</li>
-            </ul>
+        <div class="login-hero-body login-slides">
+            @* @key sull'indice: cambiando slide Blazor ricrea il nodo e l'animazione riparte *@
+            <div class="login-slide" @key="_slide">
+                <h2>@((MarkupString)Slides[_slide].Titolo)</h2>
+                <ul class="login-points">
+                    @foreach (var p in Slides[_slide].Punti)
+                    {
+                        <li><EmmaIcon Name="@p.Icona" /> @p.Testo</li>
+                    }
+                </ul>
+            </div>
+
+            <div class="login-dots">
+                @for (var i = 0; i < Slides.Length; i++)
+                {
+                    var indice = i;
+                    <button type="button" class="login-dot @(indice == _slide ? "on" : "")"
+                            aria-label="@($"Mostra la slide {indice + 1} di {Slides.Length}")"
+                            @onclick="() => VaiAllaSlide(indice)"></button>
+                }
+            </div>
         </div>
 
         <div class="login-hero-foot">© @DateTime.Now.Year EMMA Doc Platform</div>
@@ -83,6 +99,51 @@
 
     private void TogglePassword() => _mostraPassword = !_mostraPassword;
 
+    // ---- Slide rotanti del pannello di presentazione ----
+
+    private sealed record Punto(string Icona, string Testo);
+    private sealed record Slide(string Titolo, Punto[] Punti);
+
+    /// <summary>Ogni quanto cambia la slide.</summary>
+    private static readonly TimeSpan IntervalloSlide = TimeSpan.FromSeconds(6);
+
+    // Il titolo è reso come MarkupString: qui è ammesso solo <br /> per mandare a capo.
+    private static readonly Slide[] Slides =
+    [
+        new("I tuoi documenti sotto controllo,<br />dal caricamento alla conciliazione.",
+        [
+            new("upload",  "Acquisizione di bolle e fatture da PDF o XML"),
+            new("compare", "Conciliazione tra ordini, bolle e fatture"),
+            new("ai",      "Procedure eseguite con l'ausilio di Intelligenza Artificiale")
+        ]),
+        new("Archivio documentale sempre a portata,<br />ricerca in pochi istanti.",
+        [
+            new("search", "Ricerca utilizzando il linguaggio naturale"),
+            new("files",  "Anteprima dei PDF direttamente dal browser"),
+            new("box",    "Informazioni a portata di mano in qualsiasi momento")
+        ]),
+        new("I tuoi dati al sicuro,<br />con tracciabilità completa.",
+        [
+            new("shield", "Accesso riservato agli utenti abilitati"),
+            new("log",    "Log delle operazioni consultabile in ogni momento"),
+            new("key",    "Sicurezza e privacy dei dati.")
+        ])
+    ];
+
+    private int _slide;
+    private System.Threading.Timer? _timerSlide;
+
+    private void VaiAllaSlide(int indice)
+    {
+        _slide = indice;
+        FaiRipartireIlTimer();
+    }
+
+    /// <summary>Dopo un click manuale la slide scelta resta visibile per l'intervallo pieno.</summary>
+    private void FaiRipartireIlTimer() => _timerSlide?.Change(IntervalloSlide, IntervalloSlide);
+
+    public void Dispose() => _timerSlide?.Dispose();
+
     private string _user = string.Empty;
     private string _password = string.Empty;
     private bool _busy;
@@ -95,6 +156,20 @@
         {
             Nav.NavigateTo("/dashboard");
         }
+    }
+
+    // Il timer parte solo sul circuito interattivo (non durante il prerendering)
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender || _timerSlide is not null) return;
+
+        _timerSlide = new System.Threading.Timer(_ =>
+        {
+            _slide = (_slide + 1) % Slides.Length;
+
+            // Il callback arriva da un thread del pool: il render va rimandato al circuito
+            InvokeAsync(StateHasChanged);
+        }, null, IntervalloSlide, IntervalloSlide);
     }
 
     private async Task OnKeyDown(KeyboardEventArgs e)
