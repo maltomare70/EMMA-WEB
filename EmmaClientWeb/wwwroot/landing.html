@@ -216,6 +216,29 @@
             max-width: 720px;
             margin: 0 auto 40px;
         }
+        /* Messaggi alternati del titolo: sovrapposti nella stessa cella di griglia,
+           così l'altezza resta quella del più alto e la pagina non "salta" al cambio. */
+        .hero-copy {
+            display: grid;
+        }
+            .hero-copy > .hero-msg {
+                grid-area: 1 / 1;
+                opacity: 0;
+                visibility: hidden;
+                transform: translateY(12px);
+                transition: opacity .6s ease, transform .6s ease, visibility .6s;
+            }
+            .hero-copy > .hero-msg.is-on {
+                opacity: 1;
+                visibility: visible;
+                transform: none;
+            }
+        @media (prefers-reduced-motion: reduce) {
+            .hero-copy > .hero-msg {
+                transition: opacity .01s linear, visibility .01s;
+                transform: none;
+            }
+        }
         .hero-cta {
             display: flex;
             flex-direction: column;
@@ -640,8 +663,22 @@
             <div class="badge">
                 ✨ Piattaforma Documentale AI di Nuova Generazione
             </div>
-            <h1>Trasforma i documenti statici in <span>informazioni dinamiche</span></h1>
-            <p>Alimenta l'ecosistema digitale della tua azienda, elimina l'inserimento manuale dei dati, accelera i processi di verifica e ottimizza i flussi operativi.</p>
+            <!-- I messaggi si alternano ogni 5 secondi (vedi heroCopy nello script in fondo).
+                 Il primo ha già "is-on": senza JavaScript resta visibile quello. -->
+            <div class="hero-copy" id="heroCopy">
+                <div class="hero-msg is-on">
+                    <h1>Trasforma i documenti statici in <span>informazioni dinamiche</span></h1>
+                    <p>Alimenta l'ecosistema digitale della tua azienda, elimina l'inserimento manuale dei dati, accelera i processi di verifica e ottimizza i flussi operativi.</p>
+                </div>
+                <div class="hero-msg" aria-hidden="true">
+                    <h1>Ogni ordine, bolla e fattura verificate <span>riga per riga</span>, in automatico</h1>
+                    <p>Il confronto a tre vie fra ordine, bolla e fattura mette in evidenza differenze di quantità prima che diventino un problema contabile o gestionale.</p>
+                </div>
+                <div class="hero-msg" aria-hidden="true">
+                    <h1>I tuoi dati in un tuo motore di ricerca personalizzato, <span>con tutti i tuoi documenti.</span></h1>
+                    <p>Ricerca semantica del contenuto utilizzando il linguaggio naturale.</p>
+                </div>
+            </div>
             <div class="hero-cta">
 
                 <a href="mailto:emma.documentale@gmail.com?subject=Richiesta%20Credenziali%20EMMA&body=Buongiorno,%0A%0AVorrei%20richiedere%20le%20credenziali%20di%20accesso.%0A%0A---%20DATI%20RICHIEDENTE%20---%0ANome%20e%20Cognome:%20%0ARagione%20Sociale:%20%0AEmail:%20%0ATelefono:%20%0AReferente/Contatto:%20%0A%0AGrazie,%0ACordiali%20saluti." 
@@ -814,9 +851,6 @@
                     <div class="footer-logo">EMMA</div>
                     <p style="color: #94A3B8; margin-top: 8px;">Piattaforma documentale intelligente con AI</p>
                 </div>
-                <div>
-                    <a href="/login" class="btn btn-primary">Accedi al Client Web</a>
-                </div>
             </div>
             <div class="footer-bottom">
                 &copy; 2026 EMMA. Tutti i diritti riservati.
@@ -848,6 +882,46 @@
                     navToggle.setAttribute('aria-expanded', 'false');
                 });
             });
+
+            // Rotazione dei messaggi del titolo: uno ogni 5 secondi
+            var heroCopy = document.getElementById('heroCopy');
+            if (heroCopy) {
+                var messaggi = heroCopy.querySelectorAll('.hero-msg');
+
+                if (messaggi.length > 1) {
+                    var corrente = 0;
+                    var timerHero = null;
+
+                    var mostra = function (indice) {
+                        messaggi[corrente].classList.remove('is-on');
+                        messaggi[corrente].setAttribute('aria-hidden', 'true');
+
+                        corrente = indice;
+
+                        messaggi[corrente].classList.add('is-on');
+                        messaggi[corrente].removeAttribute('aria-hidden');
+                    };
+
+                    var avvia = function () {
+                        if (timerHero) return;
+                        timerHero = setInterval(function () {
+                            mostra((corrente + 1) % messaggi.length);
+                        }, 6000);
+                    };
+
+                    var ferma = function () {
+                        clearInterval(timerHero);
+                        timerHero = null;
+                    };
+
+                    // A scheda non visibile la rotazione non serve
+                    document.addEventListener('visibilitychange', function () {
+                        if (document.hidden) ferma(); else avvia();
+                    });
+
+                    if (!document.hidden) avvia();
+                }
+            }
 
             // Animazioni di comparsa allo scroll
             var revealEls = document.querySelectorAll('.reveal');
