@@ -48,19 +48,20 @@
                     <th style="width:45%">Email</th>
                     <th style="width:25%">Tenant</th>
                     <th style="width:150px">Data Creazione</th>
+                    <th style="width:80px">Abilitato</th>
                 </tr>
             </thead>
             <tbody>
                 @if (!TenantScelto)
                 {
                     <tr>
-                        <td colspan="4" class="empty-state">Selezionare un tenant per visualizzare gli utenti.</td>
+                        <td colspan="6" class="empty-state">Selezionare un tenant per visualizzare gli utenti.</td>
                     </tr>
                 }
                 else if (!ListaUtenti.Any())
                 {
                     <tr>
-                        <td colspan="4" class="empty-state">Nessun utente collegato al tenant «@_tenantSelezionato».</td>
+                        <td colspan="6" class="empty-state">Nessun utente collegato al tenant «@_tenantSelezionato».</td>
                     </tr>
                 }
                 else
@@ -76,6 +77,10 @@
                             <td>@u.email</td>
                             <td>@u.tenant</td>
                             <td>@u.data_creazione.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="cell-center">
+                                @* Sola lettura: si modifica dal form di Aggiungi/Modifica *@
+                                <input type="checkbox" checked="@u.enabled" disabled />
+                            </td>
                         </tr>
                     }
                 }
@@ -110,6 +115,15 @@
                     <input id="txtEmail" class="emma-input" type="email" maxlength="200"
                            placeholder="indirizzo@@dominio.it"
                            @bind="_form.email" @bind:event="oninput" disabled="@_salvataggio" />
+                </div>
+
+                @* Stato dell'utente: disabilitato = non può accedere al client *@
+                <div class="group group-check">
+                    <label class="emma-check" for="chkEnabled">
+                        <input id="chkEnabled" type="checkbox"
+                               @bind="_form.enabled" disabled="@_salvataggio" />
+                        <span>Utente abilitato</span>
+                    </label>
                 </div>
 
                 @if (_form.id == 0)
@@ -244,7 +258,8 @@
     {
         if (!TenantScelto) return;
 
-        _form = new UserForm { tenant = _tenantSelezionato };
+        // Un nuovo utente nasce abilitato; la spunta si può togliere prima di salvare
+        _form = new UserForm { tenant = _tenantSelezionato, enabled = true };
         _formAperto = true;
     }
 
@@ -345,6 +360,7 @@
         public string email { get; set; } = string.Empty;
         public string? tenant { get; set; } = string.Empty;
         public DateTime data_creazione { get; set; } = DateTime.UtcNow;
+        public bool enabled { get; set; } = false;
 
         /// <summary>
         /// In inserimento è la password in chiaro (il server la cifra in AddUserAsync).
@@ -360,7 +376,9 @@
             email = u.email,
             pwd = u.pwd,
             tenant = u.tenant,
-            data_creazione = u.data_creazione
+            data_creazione = u.data_creazione,
+            enabled = u.enabled
+           
         };
 
         public EmmaUser AEntity() => new()
@@ -370,7 +388,8 @@
             email = email,
             pwd = pwd,
             tenant = tenant,
-            data_creazione = data_creazione
+            data_creazione = data_creazione,
+            enabled = enabled
         };
     }
 }
