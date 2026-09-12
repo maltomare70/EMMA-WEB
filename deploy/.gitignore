@@ -1,0 +1,4 @@
+# Il file di configurazione reale contiene credenziali: non va versionato.
+# Si versiona solo il modello emma-web.env.example.
+*.env
+!*.env.example
