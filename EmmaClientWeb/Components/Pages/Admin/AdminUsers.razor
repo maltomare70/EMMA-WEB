@@ -44,6 +44,7 @@
             <thead>
                 <tr>
                     <th style="width:70px">ID</th>
+                    <th style="width:45%">Codice</th>
                     <th style="width:45%">Email</th>
                     <th style="width:25%">Tenant</th>
                     <th style="width:150px">Data Creazione</th>
@@ -71,6 +72,7 @@
                             @onclick="() => _selezionato = u"
                             @ondblclick="() => ApriForm(u)">
                             <td>@u.id</td>
+                            <td>@u.codice</td>
                             <td>@u.email</td>
                             <td>@u.tenant</td>
                             <td>@u.data_creazione.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
@@ -94,6 +96,13 @@
                     <label>Tenant:</label>
                     @* Il tenant non è modificabile dal form: si cambia dal selettore in toolbar *@
                     <span class="form-readonly">@_form.tenant</span>
+                </div>
+
+                <div class="group">
+                    <label for="txtEmail">Codice:</label>
+                    <input id="txtEmail" class="emma-input" type="text" maxlength="200"
+                           placeholder="Mario Rossi"
+                           @bind="_form.codice" @bind:event="oninput" disabled="@_salvataggio" />
                 </div>
 
                 <div class="group">
@@ -332,6 +341,7 @@
     private sealed class UserForm
     {
         public int id { get; set; }
+        public string codice { get; set; } = string.Empty;
         public string email { get; set; } = string.Empty;
         public string? tenant { get; set; } = string.Empty;
         public DateTime data_creazione { get; set; } = DateTime.UtcNow;
@@ -346,6 +356,7 @@
         public static UserForm Da(EmmaUser u) => new()
         {
             id = u.id,
+            codice = u.codice ?? string.Empty,
             email = u.email,
             pwd = u.pwd,
             tenant = u.tenant,
@@ -355,6 +366,7 @@
         public EmmaUser AEntity() => new()
         {
             id = id,
+            codice = codice,
             email = email,
             pwd = pwd,
             tenant = tenant,
