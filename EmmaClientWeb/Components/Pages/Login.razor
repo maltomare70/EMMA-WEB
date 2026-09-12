@@ -103,20 +103,20 @@
     }
 
     /// <summary>Replica di Login.IfLoginSucceded()</summary>
-    private async Task<bool> IfLoginSucceded(string user, string password)
+    private async Task<(bool esito, string userCode)> IfLoginSucceded(string user, string password)
     {
         var loginService = Factory.Login(user, password);
         var loginResponse = await loginService.LoginAsync();
 
-        if (loginResponse is null) return false;
-
+        if (loginResponse is null) return (false, string.Empty);
+            
         if (!string.IsNullOrWhiteSpace(loginResponse.url))
         {
             // Nel desktop veniva salvato su config.json; qui resta nella sessione utente
             Session.ServerUrlOverride = loginResponse.url;
         }
 
-        return loginResponse.esito;
+        return (loginResponse.esito, loginResponse.userCode);
     }
 
     private async Task BtnOk_Click()
@@ -138,9 +138,12 @@
             _busy = true;
             StateHasChanged();
 
-            if (await IfLoginSucceded(_user, _password))
+            var (ok, userCode) = await IfLoginSucceded(_user, _password);
+
+            if (ok)
             {
-                Session.SignIn(_user, _password);
+                // usa userCode se restituito, altrimenti fallback a "marco" come prima
+                Session.SignIn(_user, _password, string.IsNullOrEmpty(userCode) ? string.Empty : userCode);
 
                 // Ping opzionale per "svegliare" il server free tier
                 try

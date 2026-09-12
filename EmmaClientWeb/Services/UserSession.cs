@@ -9,6 +9,8 @@ public class UserSession
     public string User { get; private set; } = string.Empty;
     public string Password { get; private set; } = string.Empty;
 
+    public string Codice { get; private set; } = string.Empty;
+
     /// <summary>URL server valorizzato al login (LoginResponse.url), altrimenti quello di configurazione.</summary>
     public string? ServerUrlOverride { get; set; }
 
@@ -16,10 +18,11 @@ public class UserSession
 
     public event Action? Changed;
 
-    public void SignIn(string user, string password)
+    public void SignIn(string user, string password, string codice)
     {
         User = user;
         Password = password;
+        Codice = codice;
         Changed?.Invoke();
     }
 
