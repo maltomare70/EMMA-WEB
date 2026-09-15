@@ -96,7 +96,7 @@
             }
         .nav-links {
             display: flex;
-            gap: 32px;
+            gap: 26px;
             list-style: none;
             align-items: center;
         }
@@ -326,7 +326,7 @@
         /* Key Feature Section - 3 Way Matching */
         .matching-section {
             padding: clamp(56px, 10vw, 96px) 0;
-            background-color: var(--light-bg);
+            background-color: var(--white);
         }
         .matching-card {
             background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
@@ -515,6 +515,7 @@
         .benefit-card:nth-child(3) { transition-delay: 0.12s; }
         .benefit-card:nth-child(4) { transition-delay: 0.18s; }
         .benefit-card:nth-child(5) { transition-delay: 0.24s; }
+        .benefit-card:nth-child(6) { transition-delay: 0.30s; }
         /* Footer */
         footer {
             background-color: var(--dark);
@@ -542,6 +543,316 @@
             color: #64748B;
             font-size: 14px;
         }
+        /* Ricerca documentale (RAG) */
+        .rag-section {
+            padding: clamp(56px, 10vw, 96px) 0;
+            background-color: var(--light-bg);
+        }
+        .rag-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: clamp(32px, 6vw, 64px) clamp(20px, 5vw, 48px);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(24px, 4vw, 48px);
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+        }
+        .eyebrow {
+            display: inline-block;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+        .rag-text h2,
+        .anomaly-intro h2 {
+            font-size: clamp(26px, 4vw, 36px);
+            font-weight: 700;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        .rag-text > p {
+            color: var(--dark-muted);
+            font-size: 17px;
+            margin-bottom: 24px;
+        }
+        .feature-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+            .feature-list li {
+                display: flex;
+                gap: 12px;
+                align-items: flex-start;
+                color: var(--dark-muted);
+                font-size: 15px;
+            }
+            .feature-list b {
+                color: var(--dark);
+            }
+        .feature-dot {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            margin-top: 1px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        /* Finta conversazione di ricerca */
+        .chat-mock {
+            background: var(--light-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            box-shadow: var(--shadow-md);
+        }
+        .chat-q {
+            align-self: flex-end;
+            max-width: 85%;
+            background: var(--primary);
+            color: var(--white);
+            padding: 12px 16px;
+            border-radius: 16px 16px 4px 16px;
+            font-size: 15px;
+        }
+        .chat-a {
+            align-self: flex-start;
+            width: 100%;
+            background: var(--white);
+            border: 1px solid var(--border);
+            padding: 14px 16px;
+            border-radius: 16px 16px 16px 4px;
+            font-size: 14px;
+            color: var(--dark-muted);
+        }
+            .chat-a > p {
+                margin-bottom: 10px;
+            }
+        .src {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-top: 8px;
+            background: var(--light-bg);
+        }
+        .src-head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+            .src-head b {
+                color: var(--dark);
+            }
+        .src-num {
+            color: var(--primary);
+            font-weight: 700;
+        }
+        .src-score {
+            margin-left: auto;
+            padding: 1px 8px;
+            border-radius: 999px;
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .src p {
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        mark {
+            background: #FEF3C7;
+            color: inherit;
+            padding: 0 2px;
+            border-radius: 3px;
+        }
+        /* Controllo anomalie */
+        .anomaly-section {
+            padding: clamp(56px, 10vw, 96px) 0;
+            background-color: var(--light-bg);
+        }
+        .anomaly-intro {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(24px, 4vw, 48px);
+            align-items: center;
+            margin-bottom: 48px;
+        }
+            .anomaly-intro > div > p {
+                color: var(--dark-muted);
+                font-size: 17px;
+            }
+        .alert-mock {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+        .alert-mock-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            font-weight: 600;
+        }
+            .alert-mock-head span:last-child {
+                font-size: 12px;
+                font-weight: 600;
+                color: var(--accent);
+                background: #ECFDF5;
+                padding: 3px 10px;
+                border-radius: 999px;
+                white-space: nowrap;
+            }
+        .alert-row {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+            .alert-row:last-child {
+                border-bottom: none;
+            }
+        .sev {
+            flex-shrink: 0;
+            min-width: 58px;
+            text-align: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+        .sev-high { background: #FEE2E2; color: #B91C1C; }
+        .sev-mid { background: #FEF3C7; color: #92400E; }
+        .sev-low { background: var(--primary-light); color: var(--primary); }
+        .alert-body b {
+            display: block;
+            font-size: 14px;
+        }
+        .alert-body span {
+            font-size: 13px;
+            color: var(--dark-muted);
+        }
+        .alert-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+            .alert-actions span {
+                font-size: 12px;
+                font-weight: 600;
+                padding: 3px 10px;
+                border: 1px solid var(--border);
+                border-radius: 999px;
+                color: var(--dark-muted);
+                white-space: nowrap;
+            }
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 32px;
+        }
+        .level-card {
+            background-color: var(--white);
+            border: 1px solid var(--border);
+            padding: 32px 24px;
+            border-radius: var(--radius-lg);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+            .level-card:hover {
+                transform: translateY(-6px);
+                box-shadow: var(--shadow-lg);
+                border-color: var(--primary-light);
+            }
+            .level-card h3 {
+                font-size: 20px;
+                margin-bottom: 12px;
+                font-weight: 600;
+            }
+            .level-card p {
+                color: var(--dark-muted);
+                font-size: 15px;
+            }
+            .level-card:nth-child(2) { transition-delay: 0.06s; }
+            .level-card:nth-child(3) { transition-delay: 0.12s; }
+        .level-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background-color: var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+        .level-example {
+            margin-top: 16px;
+            padding: 10px 12px;
+            border-left: 3px solid var(--primary);
+            background: var(--light-bg);
+            border-radius: 0 8px 8px 0;
+            font-size: 13px;
+            color: var(--dark);
+        }
+        .matching-link {
+            display: inline-block;
+            margin-top: 24px;
+            color: #A5B4FC;
+            font-weight: 600;
+            text-decoration: none;
+        }
+            .matching-link:hover {
+                color: var(--white);
+            }
+        @media (max-width: 900px) {
+            .rag-card, .anomaly-intro {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 600px) {
+            .rag-card {
+                border-radius: 16px;
+            }
+            .level-grid {
+                gap: 20px;
+            }
+            .alert-row {
+                flex-wrap: wrap;
+            }
+            .alert-actions {
+                margin-left: 72px;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .level-card {
+                transition: none;
+            }
+        }
         /* Scroll reveal */
         .reveal {
             opacity: 0;
@@ -561,11 +872,20 @@
                 transform: none;
                 transition: none;
             }
-            .flow-card, .benefit-card, .btn, .visual-box {
+            .flow-card, .benefit-card, .btn, .visual-box, .level-card {
                 transition: none;
             }
         }
         /* Responsive */
+        /* Con sei voci il menu orizzontale si stringe prima del passaggio all'hamburger (900px) */
+        @media (max-width: 1080px) and (min-width: 901px) {
+            .nav-links {
+                gap: 16px;
+            }
+                .nav-links a {
+                    font-size: 15px;
+                }
+        }
         @media (max-width: 900px) {
             .matching-content, .sdk-card {
                 grid-template-columns: 1fr;
@@ -643,7 +963,9 @@
                 </a>
                 <ul class="nav-links" id="navLinks">
                     <li><a href="#come-funziona">Come Funziona</a></li>
+                    <li><a href="#ricerca">Ricerca AI</a></li>
                     <li><a href="#conciliazione">3-Way Matching</a></li>
+                    <li><a href="#anomalie">Anomalie</a></li>
                     <li><a href="#sdk">SDK e Connettori</a></li>
                     <li><a href="#vantaggi">Perché EMMA</a></li>
                     <li class="nav-cta-mobile"><a href="/login" class="btn btn-primary">Accedi al Client Web</a></li>
@@ -676,7 +998,11 @@
                 </div>
                 <div class="hero-msg" aria-hidden="true">
                     <h1>I tuoi dati in un tuo motore di ricerca personalizzato, <span>con tutti i tuoi documenti.</span></h1>
-                    <p>Ricerca semantica del contenuto utilizzando il linguaggio naturale.</p>
+                    <p>Fai una domanda in linguaggio naturale: EMMA trova i passaggi giusti nei tuoi PDF e ti porta direttamente alla pagina.</p>
+                </div>
+                <div class="hero-msg" aria-hidden="true">
+                    <h1>Rincari e quantità fuori scala <span>segnalati prima</span> di arrivare in contabilità</h1>
+                    <p>Ogni riga di DDT e fatture viene confrontata con lo storico del fornitore: gli avvisi spiegano il perché con i numeri, e decidi tu.</p>
                 </div>
             </div>
             <div class="hero-cta">
@@ -727,6 +1053,60 @@
             </div>
         </div>
     </section>
+    <!-- Ricerca documentale con RAG -->
+    <section id="ricerca" class="rag-section">
+        <div class="container">
+            <div class="rag-card reveal">
+                <div class="rag-text">
+                    <span class="eyebrow">Ricerca documentale con AI</span>
+                    <h2>Fai una domanda, trova la pagina giusta</h2>
+                    <p>Manuali, schede tecniche, contratti, procedure: carica i tuoi PDF ed EMMA li trasforma in una base di conoscenza interrogabile in linguaggio naturale. Non servono parole chiave esatte: la ricerca capisce il significato della domanda.</p>
+                    <ul class="feature-list">
+                        <li>
+                            <span class="feature-dot">✓</span>
+                            <span><b>Risposte con la fonte.</b> Ogni risultato indica documento, pagina e grado di pertinenza, e apre il PDF originale con un clic.</span>
+                        </li>
+                        <li>
+                            <span class="feature-dot">✓</span>
+                            <span><b>Significato e parole esatte insieme.</b> La ricerca ibrida unisce l'analisi semantica al testo letterale, così codici articolo, sigle e numeri di norma vengono trovati comunque.</span>
+                        </li>
+                        <li>
+                            <span class="feature-dot">✓</span>
+                            <span><b>Pronta per l'AI generativa (RAG).</b> I passaggi trovati sono già pronti, tramite SDK, per un assistente virtuale che risponde basandosi solo sui tuoi documenti.</span>
+                        </li>
+                        <li>
+                            <span class="feature-dot">✓</span>
+                            <span><b>Archivio riservato.</b> Ogni azienda cerca solo tra i propri documenti; i PDF si caricano dal Client Web o inviandoli per email.</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="chat-mock" aria-hidden="true">
+                    <div class="chat-q">Ogni quanto va sostituito il filtro dell'olio del compressore?</div>
+                    <div class="chat-a">
+                        <p>Ho trovato 2 passaggi pertinenti:</p>
+                        <div class="src">
+                            <div class="src-head">
+                                <span class="src-num">[1]</span>
+                                <b>Manuale_Compressore_K40.pdf</b>
+                                <span>pag. 38</span>
+                                <span class="src-score">92%</span>
+                            </div>
+                            <p>Manutenzione programmata › Filtri: <mark>sostituire il filtro dell'olio ogni 2.000 ore</mark> di funzionamento o almeno una volta l'anno…</p>
+                        </div>
+                        <div class="src">
+                            <div class="src-head">
+                                <span class="src-num">[2]</span>
+                                <b>Piano_Manutenzione_2026.pdf</b>
+                                <span>pag. 4</span>
+                                <span class="src-score">81%</span>
+                            </div>
+                            <p>Compressore K40 — cambio olio e filtro: intervento semestrale, a carico del manutentore esterno…</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
     <!-- Key Feature: Conciliazione (3-Way Matching) -->
     <section id="conciliazione" class="matching-section">
         <div class="container">
@@ -758,6 +1138,7 @@
                                 </div>
                             </div>
                         </div>
+                        <a href="#anomalie" class="matching-link">E in più: controllo automatico di prezzi e quantità →</a>
                     </div>
                     <div class="matching-visual">
                         <div class="visual-badge">⚡ Riconciliazione Automatica Attiva</div>
@@ -776,6 +1157,66 @@
                             <div style="font-size: 13px; color: #94A3B8;">DDT: 80 pz ricevuti vs Ordine: 100 pz. Evidenziato per risoluzione rapida.</div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Controllo anomalie su prezzi e quantità -->
+    <section id="anomalie" class="anomaly-section">
+        <div class="container">
+            <div class="anomaly-intro reveal">
+                <div>
+                    <span class="eyebrow">Ordini · Bolle · Fatture</span>
+                    <h2>Controllo Anomalie su Prezzi e Quantità</h2>
+                    <p>A ogni DDT o fattura importata, EMMA confronta ogni riga con lo storico di quel fornitore e di quell'articolo. Rincari non concordati, quantità fuori scala, documenti letti male o caricati due volte vengono segnalati subito, prima di arrivare in contabilità.</p>
+                </div>
+                <div class="alert-mock" aria-hidden="true">
+                    <div class="alert-mock-head">
+                        <span>Avvisi da valutare</span>
+                        <span>Precisione 84%</span>
+                    </div>
+                    <div class="alert-row">
+                        <span class="sev sev-high">Alta</span>
+                        <div class="alert-body">
+                            <b>Prezzo più alto del solito · DDT 4521</b>
+                            <span>ART-00912 — mediana 12,40 €/PZ su 14 bolle, questa 19,90 €/PZ (+60%)</span>
+                        </div>
+                        <div class="alert-actions"><span>✔ Conferma</span><span>✖ Ignora</span></div>
+                    </div>
+                    <div class="alert-row">
+                        <span class="sev sev-high">Alta</span>
+                        <div class="alert-body">
+                            <b>Possibile doppio caricamento · DDT 4533</b>
+                            <span>Stesso contenuto del DDT 4519 del 13/09 con numero diverso</span>
+                        </div>
+                        <div class="alert-actions"><span>✔ Conferma</span><span>✖ Ignora</span></div>
+                    </div>
+                    <div class="alert-row">
+                        <span class="sev sev-low">Bassa</span>
+                        <div class="alert-body">
+                            <b>Unità di misura cambiata · Fattura 88/2026</b>
+                            <span>VITE-M6 — arriva in CT invece che in PZ: confronto di prezzo sospeso</span>
+                        </div>
+                        <div class="alert-actions"><span>✔ Conferma</span><span>✖ Ignora</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="level-grid">
+                <div class="level-card reveal">
+                    <div class="level-icon">🧾</div>
+                    <h3>Controlli di Coerenza</h3>
+                    <p>Totali che non quadrano, importi di riga incoerenti, quantità o prezzi mancanti, aliquote IVA e date anomale, articoli ripetuti e documenti caricati due volte. Un documento letto male viene fermato e non inquina lo storico.</p>
+                </div>
+                <div class="level-card reveal">
+                    <div class="level-icon">📈</div>
+                    <h3>Confronto con lo Storico</h3>
+                    <p>Per ogni fornitore e articolo EMMA ricalcola ogni notte il prezzo e la quantità abituali, con una statistica robusta che non si lascia ingannare da un singolo valore sbagliato. Se cambia l'unità di misura, il confronto viene sospeso invece di dare un falso allarme.</p>
+                    <div class="level-example">«Prezzo fisso a 12,40 € sulle ultime 14 bolle, questa riporta 13,10 €»</div>
+                </div>
+                <div class="level-card reveal">
+                    <div class="level-icon">✅</div>
+                    <h3>Avvisi Chiari, Decide l'Operatore</h3>
+                    <p>Ogni avviso spiega il perché con i numeri, ordinato per gravità. L'operatore lo conferma o lo ignora con una nota, e la piattaforma misura la precisione degli avvisi: così la lista resta utile e non diventa rumore.</p>
                 </div>
             </div>
         </div>
@@ -839,6 +1280,12 @@
                     <div class="benefit-icon">🖥️</div>
                     <h3>Installazione On-Premises</h3>
                     <p>Mantieni il totale controllo: distribuisci il server di EMMA direttamente sui tuoi Data Center.</p>
+                </div>
+                <!-- Benefit 6 -->
+                <div class="benefit-card reveal">
+                    <div class="benefit-icon">🛡️</div>
+                    <h3>Nessun Rincaro Inosservato</h3>
+                    <p>Prezzi, quantità e duplicati vengono controllati a ogni documento: gli errori dei fornitori emergono subito, non a fine mese.</p>
                 </div>
             </div>
         </div>
