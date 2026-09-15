@@ -40,6 +40,10 @@ public class EmmaServiceFactory
     public LogServiceClient Logs()
         => new LogServiceClient(ServerUrl, _session.User, _session.Password);
 
+    /// <summary>Client del modulo anomalie prezzi/quantita' (/api/v1/anomalie).</summary>
+    public IAnomalieServiceClient Anomalie()
+        => new AnomalieServiceClient(ServerUrl, _session.User, _session.Password);
+
     public IUserServiceClient Users()
         => new UserServiceClient(ServerUrl, _session.User, _session.Password);
 

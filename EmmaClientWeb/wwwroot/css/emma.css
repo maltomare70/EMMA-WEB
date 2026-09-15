@@ -2204,3 +2204,241 @@ body {
     .rag-fonte-file { max-width: 150px; }
     .chat-params { gap: 10px; }
 }
+
+/* ============================================================
+   Anomalie prezzi e quantità (pagina /anomalie)
+   ============================================================ */
+
+/* --- indicatori del periodo --- */
+
+.anom-kpi-periodo {
+    margin: 0 0 6px 2px;
+    font-size: 12px;
+    color: var(--emma-subtitle);
+}
+
+.anom-kpi-periodo b {
+    font-weight: 600;
+    color: var(--emma-card-text);
+}
+
+.anom-kpi {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.anom-kpi-card {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 150px;
+    padding: 10px 14px;
+    background: var(--emma-surface);
+    border: 1px solid var(--emma-card-border);
+    border-left: 4px solid var(--emma-blue);
+    border-radius: var(--r-md);
+    box-shadow: var(--sh-1);
+}
+
+.anom-kpi-card b {
+    font-size: 22px;
+    line-height: 1.2;
+    color: var(--emma-title);
+    font-variant-numeric: tabular-nums;
+}
+
+.anom-kpi-card small {
+    font-size: 11px;
+    color: var(--emma-subtitle);
+}
+
+.anom-kpi-card.warn {
+    border-left-color: var(--emma-amber);
+    background: #FFFBF3;
+}
+
+.anom-kpi-card.warn small {
+    color: var(--emma-amber);
+    font-weight: 600;
+}
+
+.anom-kpi-lbl {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    color: var(--emma-subtitle);
+}
+
+.anom-kpi-toggle {
+    align-self: center;
+    margin-left: auto;
+}
+
+.anom-dettaglio {
+    margin-bottom: 12px;
+    overflow-x: auto;
+}
+
+.anom-dettaglio table.emma-grid {
+    width: 100%;
+}
+
+table.emma-grid tbody tr.anom-riga-warn td {
+    background: #FFFBF3;
+}
+
+/* --- griglia --- */
+
+/* Sotto questa larghezza la tabella scorre in orizzontale invece di schiacciare i testi */
+table.anom-grid {
+    min-width: 1080px;
+}
+
+table.anom-grid tbody td {
+    vertical-align: top;
+}
+
+/* Gli avvisi gia' valutati restano leggibili ma passano in secondo piano */
+table.anom-grid tbody tr.anom-valutata td {
+    color: var(--emma-subtitle);
+}
+
+.anom-sev,
+.anom-stato {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.anom-sev.s3 { color: #96302E; background: #FBE9E8; }
+.anom-sev.s2 { color: #8A5A0B; background: #FDF3E0; }
+.anom-sev.s1 { color: var(--emma-blue-700); background: var(--emma-blue-50); }
+.anom-sev.s0 { color: var(--emma-grey); background: #EEF1F5; }
+
+.anom-stato.st0 { color: #8A5A0B; background: #FDF3E0; }
+.anom-stato.st1 { color: #96302E; background: #FBE9E8; }
+.anom-stato.st2 { color: var(--emma-grey); background: #EEF1F5; }
+
+.anom-chi {
+    margin-top: 3px;
+    font-size: 11px;
+    color: var(--emma-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 110px;
+}
+
+.anom-doc {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.anom-doc b {
+    color: var(--emma-title);
+}
+
+.anom-doc span {
+    font-size: 12px;
+    color: var(--emma-subtitle);
+}
+
+.anom-forn {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.anom-codice {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 12px;
+    word-break: break-all;
+}
+
+.anom-tipo {
+    font-weight: 600;
+    color: var(--emma-title);
+}
+
+.anom-valutata .anom-tipo {
+    color: inherit;
+}
+
+.anom-msg {
+    margin-top: 2px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.anom-note {
+    margin-top: 4px;
+    padding: 3px 8px;
+    font-size: 12px;
+    color: var(--emma-card-text);
+    background: var(--emma-surface-2);
+    border-left: 3px solid var(--emma-card-border);
+    border-radius: var(--r-sm);
+    word-break: break-word;
+}
+
+.anom-azioni {
+    white-space: nowrap;
+}
+
+.anom-azioni .btn-mini + .btn-mini {
+    margin-left: 4px;
+}
+
+.anom-btn-ok:hover:not(:disabled) {
+    color: var(--emma-red);
+    border-color: var(--emma-red);
+    background: #FDF2F1;
+}
+
+/* --- paginazione --- */
+
+.anom-pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 10px 0 0;
+    font-size: 12px;
+    color: var(--emma-subtitle);
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- finestra del feedback --- */
+
+.anom-feedback {
+    width: 520px;
+}
+
+.anom-feedback textarea.emma-input {
+    width: 100%;
+    min-height: 70px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.anom-feedback .form-note {
+    line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+    .anom-kpi-card { min-width: calc(50% - 6px); flex: 1 1 calc(50% - 6px); }
+    .anom-kpi-toggle { margin-left: 0; }
+    .anom-forn { max-width: 150px; }
+}

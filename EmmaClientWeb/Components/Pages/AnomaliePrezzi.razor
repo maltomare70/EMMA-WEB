@@ -1,0 +1,655 @@
+@page "/anomalie"
+@layout MainLayout
+@using EmmaServer.Entities.Dtos
+@using Emma.Services.Services
+@inject UserSession Session
+@inject EmmaServiceFactory Factory
+@inject NavigationManager Nav
+
+@* Lista degli avvisi del modulo anomalie prezzi/quantita' (GET /api/v1/anomalie).
+   L'operatore conferma o ignora ogni avviso: il feedback e' la metrica del modulo
+   (precisione = confermate / valutate) e il training set del futuro filtro AutoML. *@
+
+<div class="emma-page @(_busy ? "busy" : "")">
+
+    @* ---------------- Indicatori del periodo ----------------
+       Senza date impostate coprono gli ultimi 90 giorni (la precisione deve dire com'e' il modulo
+       adesso); con le date Da/A seguono il periodo scelto. La lista invece non ha date di default:
+       un avviso aperto resta da valutare anche se e' vecchio. *@
+    <div class="anom-kpi-periodo">Indicatori: <b>@PeriodoIndicatori</b></div>
+    <div class="anom-kpi">
+        <div class="anom-kpi-card">
+            <span class="anom-kpi-lbl">Da valutare</span>
+            <b>@(_statistiche?.Complessivo.Aperte ?? 0)</b>
+        </div>
+        <div class="anom-kpi-card">
+            <span class="anom-kpi-lbl">Confermate</span>
+            <b>@(_statistiche?.Complessivo.Confermate ?? 0)</b>
+        </div>
+        <div class="anom-kpi-card">
+            <span class="anom-kpi-lbl">Ignorate</span>
+            <b>@(_statistiche?.Complessivo.Ignorate ?? 0)</b>
+        </div>
+        <div class="anom-kpi-card @(_statistiche?.Complessivo.SottoSoglia == true ? "warn" : "")"
+             title="Avvisi confermati su avvisi valutati. Sotto il 30% la lista smette di essere utile.">
+            <span class="anom-kpi-lbl">Precisione</span>
+            <b>@Percentuale(_statistiche?.Complessivo.Precisione)</b>
+            <small>@(_statistiche?.Complessivo.SottoSoglia == true ? "sotto il 30%: troppi falsi allarmi" : "confermate su valutate")</small>
+        </div>
+        <button class="btn-mini anom-kpi-toggle" @onclick="() => _dettaglioAperto = !_dettaglioAperto"
+                disabled="@(_statistiche is null || _statistiche.PerTipo.Count == 0)">
+            @(_dettaglioAperto ? "▲ Nascondi dettaglio" : "▼ Dettaglio per tipo")
+        </button>
+    </div>
+
+    @if (_dettaglioAperto && _statistiche is not null)
+    {
+        <div class="anom-dettaglio">
+            <table class="emma-grid">
+                <thead>
+                    <tr>
+                        <th>Tipo di avviso</th>
+                        <th style="width:80px">Livello</th>
+                        <th style="width:90px">Totali</th>
+                        <th style="width:100px">Da valutare</th>
+                        <th style="width:100px">Confermate</th>
+                        <th style="width:90px">Ignorate</th>
+                        <th style="width:110px">Precisione</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in _statistiche.PerTipo)
+                    {
+                        <tr class="@(s.SottoSoglia ? "anom-riga-warn" : "")">
+                            <td>@EtichettaTipo(s.Tipo)</td>
+                            <td class="cell-center">@s.Livello</td>
+                            <td class="cell-right">@s.Totali</td>
+                            <td class="cell-right">@s.Aperte</td>
+                            <td class="cell-right">@s.Confermate</td>
+                            <td class="cell-right">@s.Ignorate</td>
+                            <td class="cell-right">@Percentuale(s.Precisione)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* ---------------- Filtri ---------------- *@
+    <div class="emma-toolbar">
+        <div class="emma-toolbar-left">
+            <div class="emma-field">
+                <label for="cboStato">Stato:</label>
+                <select id="cboStato" class="emma-select" style="width:150px"
+                        @bind="_stato" @bind:after="ApplicaFiltri" disabled="@_busy">
+                    <option value="0">Da valutare</option>
+                    <option value="1">Confermate</option>
+                    <option value="2">Ignorate</option>
+                    <option value="">Tutte</option>
+                </select>
+            </div>
+
+            <div class="emma-field">
+                <label for="cboSeverita">Gravità:</label>
+                <select id="cboSeverita" class="emma-select" style="width:170px"
+                        @bind="_severita" @bind:after="ApplicaFiltri" disabled="@_busy">
+                    <option value="1">Tutte</option>
+                    <option value="2">Media e alta</option>
+                    <option value="3">Solo alta</option>
+                    <option value="0">Tutte, anche in prova</option>
+                </select>
+            </div>
+
+            <div class="emma-field">
+                <label for="cboTipo">Tipo:</label>
+                <select id="cboTipo" class="emma-select" style="width:220px"
+                        @bind="_tipo" @bind:after="ApplicaFiltri" disabled="@_busy">
+                    <option value="">Tutti</option>
+                    @foreach (var t in TipiSelezionabili)
+                    {
+                        <option value="@t">@EtichettaTipo(t)</option>
+                    }
+                </select>
+            </div>
+
+            <div class="emma-field">
+                <label for="cboFornitore">Fornitore:</label>
+                <select id="cboFornitore" class="emma-select" style="width:220px"
+                        @bind="_fornitore" @bind:after="ApplicaFiltri" disabled="@_busy">
+                    <option value="">Tutti</option>
+                    @foreach (var f in _fornitori)
+                    {
+                        <option value="@f.id">@f.descrizione</option>
+                    }
+                </select>
+            </div>
+
+            <div class="emma-field">
+                <label for="dtDa" title="Filtra la lista per data di rilevazione; gli indicatori in alto seguono lo stesso periodo">Da:</label>
+                <input id="dtDa" class="emma-input" type="date" style="width:150px"
+                       @bind="_da" @bind:format="yyyy-MM-dd" @bind:after="ApplicaFiltriEStatistiche"
+                       disabled="@_busy" />
+            </div>
+
+            <div class="emma-field">
+                <label for="dtA">A:</label>
+                <input id="dtA" class="emma-input" type="date" style="width:150px"
+                       @bind="_a" @bind:format="yyyy-MM-dd" @bind:after="ApplicaFiltriEStatistiche"
+                       disabled="@_busy" />
+            </div>
+
+            <button class="btn btn-grey btn-sm" @onclick="ReimpostaFiltri" disabled="@_busy">Reimposta filtri</button>
+        </div>
+
+        <div class="emma-toolbar-right">
+            <span class="file-label done">@EtichettaConteggio</span>
+            <button class="btn btn-default" @onclick="CaricaTutto" disabled="@_busy">🔄 Ricarica</button>
+        </div>
+    </div>
+
+    @* ---------------- Lista ---------------- *@
+    <div class="emma-grid-wrapper">
+        <table class="emma-grid anom-grid">
+            <thead>
+                <tr>
+                    <th style="width:84px">Gravità</th>
+                    <th style="width:120px">Rilevata</th>
+                    <th style="width:230px">Documento</th>
+                    <th style="width:140px">Articolo</th>
+                    <th>Avviso</th>
+                    <th style="width:110px">Stato</th>
+                    <th style="width:200px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_pagina.Righe.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            @if (!_caricato)
+                            {
+                                <text>Caricamento degli avvisi in corso...</text>
+                            }
+                            else if (_stato == "0")
+                            {
+                                <text>Nessun avviso da valutare con questi filtri.</text>
+                            }
+                            else
+                            {
+                                <text>Nessun avviso con questi filtri.</text>
+                            }
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var r in _pagina.Righe)
+                    {
+                        <tr @key="r.id" class="@(r.stato != 0 ? "anom-valutata" : "")">
+                            <td>
+                                <span class="anom-sev s@(r.severita)" title="Livello @r.livello">@EtichettaSeverita(r.severita)</span>
+                            </td>
+                            <td>@OraItaliana(r.data_creazione)</td>
+                            <td>
+                                <div class="anom-doc">
+                                    <b>@TipoDocumento(r.tipo_documento) @r.numero_documento</b>
+                                    <span>@DataDocumento(r.data_documento)</span>
+                                    <span class="anom-forn" title="@(r.fornitore_descrizione ?? r.mittente)">@(r.fornitore_descrizione ?? r.mittente)</span>
+                                </div>
+                            </td>
+                            <td class="anom-codice" title="@r.codice">@(string.IsNullOrEmpty(r.codice) ? "—" : r.codice)</td>
+                            <td>
+                                <span class="anom-tipo">@EtichettaTipo(r.tipo)</span>
+                                <div class="anom-msg">@r.messaggio</div>
+                                @if (!string.IsNullOrWhiteSpace(r.note))
+                                {
+                                    <div class="anom-note">📝 @r.note</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="anom-stato st@(r.stato)">@EtichettaStato(r.stato)</span>
+                                @if (r.stato != 0 && !string.IsNullOrEmpty(r.utente_feedback))
+                                {
+                                    <div class="anom-chi">@r.utente_feedback</div>
+                                }
+                            </td>
+                            <td class="cell-right anom-azioni">
+                                @if (r.stato == 0)
+                                {
+                                    <button class="btn-mini anom-btn-ok" title="È davvero un errore"
+                                            @onclick="() => ApriFeedback(r, 1)" disabled="@_busy">✔ Conferma</button>
+                                    <button class="btn-mini" title="Non è un problema"
+                                            @onclick="() => ApriFeedback(r, 2)" disabled="@_busy">✖ Ignora</button>
+                                }
+                                else
+                                {
+                                    <button class="btn-mini" title="Rimetti l'avviso fra quelli da valutare"
+                                            @onclick="() => Riapri(r)" disabled="@_busy">↺ Riapri</button>
+                                }
+                                <button class="btn-mini" title="Apri il documento"
+                                        @onclick="() => ApriDocumento(r)" disabled="@(_busy || string.IsNullOrEmpty(r.id_master))">📄</button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (_pagina.Totale > Limite)
+    {
+        <div class="anom-pager">
+            <button class="btn-mini" @onclick="() => CambiaPagina(-1)" disabled="@(_busy || _offset == 0)">« Precedenti</button>
+            <span>@(_offset + 1)–@(Math.Min(_offset + Limite, _pagina.Totale)) di @_pagina.Totale</span>
+            <button class="btn-mini" @onclick="() => CambiaPagina(1)" disabled="@(_busy || _offset + Limite >= _pagina.Totale)">Successive »</button>
+        </div>
+    }
+</div>
+
+@* ---------------- Feedback con nota ---------------- *@
+@if (_feedbackSu is not null)
+{
+    <div class="dialog-overlay" @onclick="ChiudiFeedback">
+        <div class="dialog-window form-window anom-feedback" @onclick:stopPropagation="true">
+            <div class="win-title">@(_feedbackStato == 1 ? "Conferma l'anomalia" : "Ignora l'avviso")</div>
+            <div class="form-body">
+                <div class="form-note">
+                    <b>@EtichettaTipo(_feedbackSu.tipo)</b><br />
+                    @_feedbackSu.messaggio
+                </div>
+
+                <div class="form-readonly">
+                    @(_feedbackStato == 1
+                        ? "Confermando dici che il documento contiene davvero un errore da sistemare."
+                        : "Ignorando dici che questo avviso non indica un problema.")
+                </div>
+
+                <div class="group">
+                    <label for="txtNota">Nota (facoltativa)</label>
+                    <textarea id="txtNota" class="emma-input" rows="3" maxlength="2000"
+                              @bind="_feedbackNota" placeholder="Es. listino aggiornato dal fornitore a settembre"></textarea>
+                </div>
+
+                <div class="dialog-actions">
+                    <button class="btn btn-grey" @onclick="ChiudiFeedback" disabled="@_busy">Annulla</button>
+                    <button class="btn @(_feedbackStato == 1 ? "btn-red" : "btn-blue")" @onclick="InviaFeedback" disabled="@_busy">
+                        @(_feedbackStato == 1 ? "Conferma" : "Ignora")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<PdfViewer @ref="_pdfViewer" />
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    private const int Limite = 50;
+
+    private IAnomalieServiceClient _anomalie = default!;
+    private EmmaDialogs _dialogs = default!;
+    private PdfViewer _pdfViewer = default!;
+
+    private PaginaAnomalie _pagina = new();
+    private StatisticheAnomalie? _statistiche;
+    private List<EmmaFornitori> _fornitori = new();
+
+    private bool _busy;
+    private bool _caricato;
+    private bool _dettaglioAperto;
+    private int _offset;
+
+    // Filtri come stringhe: le <select> legano valori testuali, "" = nessun filtro.
+    private string _stato = "0";
+    private string _severita = "1";
+    private string _tipo = string.Empty;
+    private string _fornitore = string.Empty;
+    private DateTime? _da;
+    private DateTime? _a;
+
+    // Feedback in corso
+    private AnomaliaLista? _feedbackSu;
+    private short _feedbackStato;
+    private string? _feedbackNota;
+
+    protected override void OnInitialized()
+    {
+        if (!Session.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
+        _anomalie = Factory.Anomalie();
+    }
+
+    // Il caricamento avviene dopo il primo render, quando i @ref dei dialog sono valorizzati
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Session.IsAuthenticated) return;
+
+        try
+        {
+            _fornitori = (await Factory.Fornitori().GetFornitoriAsync())
+                .OrderBy(f => f.descrizione, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+        catch
+        {
+            // Il filtro per fornitore resta vuoto: la lista funziona lo stesso.
+            _fornitori = new();
+        }
+
+        await CaricaTutto();
+        StateHasChanged();
+    }
+
+    // ------------------------------------------------------------------ caricamento
+
+    private async Task CaricaTutto()
+    {
+        _busy = true;
+        try
+        {
+            await Task.WhenAll(CaricaListaInternaAsync(), CaricaStatisticheInternaAsync());
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _caricato = true;
+            _busy = false;
+        }
+    }
+
+    private async Task CaricaLista()
+    {
+        _busy = true;
+        try
+        {
+            await CaricaListaInternaAsync();
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _caricato = true;
+            _busy = false;
+        }
+    }
+
+    private async Task CaricaListaInternaAsync()
+    {
+        _pagina = await _anomalie.GetAnomalieAsync(new FiltriAnomalie
+        {
+            Stato = short.TryParse(_stato, out var st) ? st : null,
+            Severita = short.TryParse(_severita, out var sev) ? sev : null,
+            Tipo = string.IsNullOrEmpty(_tipo) ? null : _tipo,
+            Fornitore = int.TryParse(_fornitore, out var f) ? f : null,
+            Da = _da,
+            A = _a,
+            Limit = Limite,
+            Offset = _offset,
+        });
+
+        // Dopo un feedback l'ultima pagina puo' essersi svuotata: si torna indietro di una.
+        if (_pagina.Righe.Count == 0 && _offset > 0 && _pagina.Totale > 0)
+        {
+            _offset = Math.Max(0, (_pagina.Totale - 1) / Limite * Limite);
+            await CaricaListaInternaAsync();
+        }
+    }
+
+    /// <summary>Periodo di default degli indicatori quando non e' impostata nessuna data.</summary>
+    private const int GiorniIndicatoriDefault = 90;
+
+    private bool DateImpostate => _da.HasValue || _a.HasValue;
+
+    /// <summary>Estremi usati per le statistiche: quelli scelti dall'utente, altrimenti gli ultimi 90 giorni.</summary>
+    private (DateTime? Da, DateTime? A) PeriodoStatistiche => DateImpostate
+        ? (_da, _a)
+        : (DateTime.Today.AddDays(-(GiorniIndicatoriDefault - 1)), DateTime.Today);
+
+    private string PeriodoIndicatori => (_da, _a) switch
+    {
+        (null, null) => $"ultimi {GiorniIndicatoriDefault} giorni",
+        ({ } da, null) => $"dal {da:dd/MM/yyyy} a oggi",
+        (null, { } a) => $"fino al {a:dd/MM/yyyy}",
+        ({ } da, { } a) => $"dal {da:dd/MM/yyyy} al {a:dd/MM/yyyy}",
+    };
+
+    private async Task CaricaStatisticheInternaAsync()
+    {
+        var (da, a) = PeriodoStatistiche;
+        _statistiche = await _anomalie.GetStatisticheAsync(da, a);
+    }
+
+    private async Task ApplicaFiltri()
+    {
+        if (_da is { } da && _a is { } a && a < da)
+        {
+            await _dialogs.ErroreAsync("La data finale precede quella iniziale.");
+            return;
+        }
+
+        _offset = 0;
+        await CaricaLista();
+    }
+
+    private async Task ApplicaFiltriEStatistiche()
+    {
+        if (_da is { } da && _a is { } a && a < da)
+        {
+            await _dialogs.ErroreAsync("La data finale precede quella iniziale.");
+            return;
+        }
+
+        _offset = 0;
+        await CaricaTutto();
+    }
+
+    private async Task ReimpostaFiltri()
+    {
+        _stato = "0";
+        _severita = "1";
+        _tipo = string.Empty;
+        _fornitore = string.Empty;
+        _da = null;
+        _a = null;
+        _offset = 0;
+        await CaricaTutto();
+    }
+
+    private async Task CambiaPagina(int direzione)
+    {
+        _offset = Math.Max(0, _offset + direzione * Limite);
+        await CaricaLista();
+    }
+
+    // ------------------------------------------------------------------ feedback
+
+    private void ApriFeedback(AnomaliaLista riga, short stato)
+    {
+        _feedbackSu = riga;
+        _feedbackStato = stato;
+        _feedbackNota = riga.note;
+    }
+
+    private void ChiudiFeedback()
+    {
+        if (_busy) return;
+        _feedbackSu = null;
+        _feedbackNota = null;
+    }
+
+    private async Task InviaFeedback()
+    {
+        if (_feedbackSu is null) return;
+
+        var riga = _feedbackSu;
+        var esito = await SalvaFeedbackAsync(riga, _feedbackStato, _feedbackNota);
+        if (esito) _feedbackSu = null;
+    }
+
+    private Task Riapri(AnomaliaLista riga) => SalvaFeedbackAsync(riga, 0, riga.note);
+
+    /// <summary>
+    /// Invia il feedback e ricarica lista e indicatori. Si ricarica sempre tutto: un feedback su un
+    /// avviso bloccante (es. totali che non quadrano) fa rianalizzare il documento sul server, che
+    /// puo' aggiungere avvisi nuovi e cambiare l'id di quelli ancora aperti.
+    /// </summary>
+    private async Task<bool> SalvaFeedbackAsync(AnomaliaLista riga, short stato, string? nota)
+    {
+        _busy = true;
+        try
+        {
+            var aggiornata = await _anomalie.InviaFeedbackAsync(riga.id, stato,
+                string.IsNullOrWhiteSpace(nota) ? null : nota.Trim());
+
+            _busy = false;
+            if (aggiornata is null)
+                await _dialogs.InfoAsync("L'avviso non esiste più (il documento è stato rianalizzato o cancellato). La lista viene aggiornata.");
+
+            await CaricaTutto();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _busy = false;
+            await _dialogs.ErroreAsync(ex.Message);
+            return false;
+        }
+    }
+
+    // ------------------------------------------------------------------ documento
+
+    private async Task ApriDocumento(AnomaliaLista riga)
+    {
+        if (string.IsNullOrEmpty(riga.id_master)) return;
+
+        _busy = true;
+        byte[]? allegato = null;
+        try
+        {
+            var docs = await Factory.Docs().GetDocsAsync(new EmmaDocFilters { Id = riga.id_master, Stato = -1 });
+            var doc = docs.FirstOrDefault(d => d.id == riga.doc_id) ?? docs.FirstOrDefault();
+            allegato = doc?.allegato;
+        }
+        catch (Exception ex)
+        {
+            _busy = false;
+            await _dialogs.ErroreAsync(ex.Message);
+            return;
+        }
+        _busy = false;
+
+        if (allegato is null || allegato.Length == 0)
+        {
+            await _dialogs.InfoAsync("Il documento non è più presente o non ha un allegato.");
+        }
+        else if (!IsPdf(allegato))
+        {
+            await _dialogs.InfoAsync("L'allegato non è un PDF (per esempio una fattura elettronica XML): aprilo da \"Visualizza Ordini Bolle Fatture\".");
+        }
+        else
+        {
+            _pdfViewer.Mostra(allegato, $"{TipoDocumento(riga.tipo_documento)} {riga.numero_documento}.pdf".Trim());
+        }
+    }
+
+    private static bool IsPdf(byte[] dati)
+        => dati.Length > 4 && dati[0] == (byte)'%' && dati[1] == (byte)'P' && dati[2] == (byte)'D' && dati[3] == (byte)'F';
+
+    // ------------------------------------------------------------------ testi
+
+    private string EtichettaConteggio => !_caricato
+        ? "Caricamento..."
+        : _pagina.Totale == 1 ? "1 avviso" : $"{_pagina.Totale} avvisi";
+
+    private static readonly string[] TipiSelezionabili =
+    [
+        TipoAnomalia.PrezzoAlto, TipoAnomalia.PrezzoBasso, TipoAnomalia.QtaAnomala, TipoAnomalia.UmCambiata,
+        TipoAnomalia.IncoerenzaTotali, TipoAnomalia.Duplicato, TipoAnomalia.RigaIncoerente,
+        TipoAnomalia.ValoreImpossibile, TipoAnomalia.AliquotaIva, TipoAnomalia.DataAnomala,
+        TipoAnomalia.RigheGemelle, TipoAnomalia.RigaAnomala, TipoAnomalia.NuovoListino
+    ];
+
+    private static string EtichettaTipo(string? tipo) => tipo switch
+    {
+        TipoAnomalia.PrezzoAlto => "Prezzo più alto del solito",
+        TipoAnomalia.PrezzoBasso => "Prezzo più basso del solito",
+        TipoAnomalia.QtaAnomala => "Quantità insolita",
+        TipoAnomalia.UmCambiata => "Unità di misura cambiata",
+        TipoAnomalia.IncoerenzaTotali => "Totali che non quadrano",
+        TipoAnomalia.Duplicato => "Possibile doppio caricamento",
+        TipoAnomalia.RigaIncoerente => "Importi di riga incoerenti",
+        TipoAnomalia.ValoreImpossibile => "Valori mancanti o non validi",
+        TipoAnomalia.AliquotaIva => "Aliquota IVA non valida",
+        TipoAnomalia.DataAnomala => "Data del documento anomala",
+        TipoAnomalia.RigheGemelle => "Articolo ripetuto",
+        TipoAnomalia.RigaAnomala => "Riga insolita",
+        TipoAnomalia.NuovoListino => "Nuovo listino",
+        null or "" => "—",
+        _ => tipo
+    };
+
+    private static string EtichettaSeverita(short severita) => severita switch
+    {
+        3 => "Alta",
+        2 => "Media",
+        1 => "Bassa",
+        _ => "In prova"
+    };
+
+    private static string EtichettaStato(short stato) => stato switch
+    {
+        1 => "Confermata",
+        2 => "Ignorata",
+        _ => "Da valutare"
+    };
+
+    private static string TipoDocumento(string? tipo) => tipo?.Trim() switch
+    {
+        "1" => "Ordine",
+        "2" => "DDT",
+        "3" => "Fattura acc.",
+        "4" => "Fattura",
+        "5" => "Nota di credito",
+        _ => "Documento"
+    };
+
+    private static string DataDocumento(string? data)
+        => DateTime.TryParseExact(data, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+            ? d.ToString("dd/MM/yyyy")
+            : data ?? string.Empty;
+
+    private static string Percentuale(double? valore)
+        => valore is { } v ? v.ToString("P0", CultureInfo.GetCultureInfo("it-IT")) : "—";
+
+    // Le date degli avvisi arrivano in UTC (timestamptz): si mostrano all'ora italiana
+    // anche quando il container gira in UTC.
+    private static readonly TimeZoneInfo FusoItaliano = TrovaFusoItaliano();
+
+    private static TimeZoneInfo TrovaFusoItaliano()
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome");
+        }
+        catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            return TimeZoneInfo.Local;
+        }
+    }
+
+    private static string OraItaliana(DateTime data)
+    {
+        var locale = data.Kind switch
+        {
+            DateTimeKind.Utc => TimeZoneInfo.ConvertTimeFromUtc(data, FusoItaliano),
+            DateTimeKind.Local => TimeZoneInfo.ConvertTime(data, FusoItaliano),
+            _ => data
+        };
+        return locale.ToString("dd/MM/yyyy HH:mm");
+    }
+}
