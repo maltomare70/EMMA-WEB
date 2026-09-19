@@ -227,10 +227,13 @@
                                                             <td><input class="cell-edit cell-right" type="number" step="0.01" value="@Inv(r.Totale)"
                                                                        @onchange="e => AggiornaCampo(r, () => r.Totale = ToDecimal(e.Value))" /></td>
                                                             <td class="cell-center">
+                                                                @{ var nConc = ConteggioConciliazione(r); }
                                                                 <button class="btn btn-grey btn-sm"
                                                                         @onclick="() => Conciliazione_Click(m, r)"
-                                                                        disabled="@(_busy)">
-                                                                    Conciliazione
+                                                                        disabled="@(_busy)"
+                                                                        title="@($"{nConc} righe di conciliazione")">
+                                                                    <span>Conciliazione</span>
+                                                                    <span class="btn-badge">@nConc</span>
                                                                 </button>
                                                             </td>
                                                             <td class="cell-center">
@@ -499,6 +502,14 @@
         => ParseDataDocumento(data) is { } d
             ? d.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)
             : data ?? string.Empty;
+
+    /// <summary>
+    /// Numero complessivo di righe di conciliazione associate alla riga di dettaglio
+    /// (le due strutture mostrate nella popup: Ordini-Bolle e Bolle-Fatture).
+    /// </summary>
+    private static int ConteggioConciliazione(RigheDocumento riga)
+        => (riga.RigheDocumentoConciliazione1?.Count ?? 0)
+         + (riga.RigheDocumentoConciliazione2?.Count ?? 0);
 
     /// <summary>Interpreta la data documento ("yyyy-MM-dd") restituita dall'API.</summary>
     private static DateTime? ParseDataDocumento(string? data)

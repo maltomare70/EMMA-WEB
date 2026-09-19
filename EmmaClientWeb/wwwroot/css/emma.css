@@ -960,6 +960,23 @@ table.emma-grid input.cell-edit[readonly] {
     white-space: nowrap;
 }
 
+/* Contatore mostrato dentro un pulsante (es. righe di conciliazione) */
+.btn-badge {
+    display: inline-block;
+    min-width: 18px;
+    padding: 0 6px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .28);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+}
+
+.btn-default .btn-badge {
+    background: rgba(0, 0, 0, .10);
+}
+
 .conc-title-right {
     display: flex;
     align-items: center;
