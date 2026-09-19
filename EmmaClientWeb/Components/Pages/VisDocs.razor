@@ -56,19 +56,47 @@
 
             <div class="emma-separator"></div>
 
+            <div class="emma-field">
+                <label>N° Documento:</label>
+                <input class="emma-select" style="width:180px" type="text"
+                       placeholder="Ricerca parziale..."
+                       @bind="_filtroNumeroDocumento" @bind:event="oninput" disabled="@_busy" />
+            </div>
+
+            <div class="emma-separator"></div>
+
+            <div class="emma-field">
+                <label>Data dal:</label>
+                <input class="emma-select" style="width:150px" type="date"
+                       @bind="_filtroDataDa" disabled="@_busy" />
+            </div>
+
+            <div class="emma-field">
+                <label>al:</label>
+                <input class="emma-select" style="width:150px" type="date"
+                       @bind="_filtroDataA" disabled="@_busy" />
+            </div>
+
+            <button class="btn btn-default btn-sm" @onclick="PulisciFiltri"
+                    disabled="@(_busy || !FiltriAttivi)" title="Azzera i filtri a video">
+                Azzera filtri
+            </button>
+
+            <div class="emma-separator"></div>
+
             <button class="btn btn-blue" @onclick="MostraDocumenti_Click" disabled="@_busy">
                 <span>📁</span><span>Mostra Documenti ...</span>
             </button>
 
             <div class="emma-separator"></div>
 
-            <button class="btn btn-blue" @onclick="Export_Click" disabled="@(_busy || !Documenti.Any())">
+            <button class="btn btn-blue" @onclick="Export_Click" disabled="@(_busy || !DocumentiVisibili.Any())">
                 <span>💾</span><span>Esporta su file ...</span>
             </button>
 
             <div class="emma-separator"></div>
 
-            <button class="btn btn-grey" @onclick="ChiudiStato_Click" disabled="@(_busy || !Documenti.Any())">
+            <button class="btn btn-grey" @onclick="ChiudiStato_Click" disabled="@(_busy || !DocumentiVisibili.Any())">
                 <span>❌</span><span>Chiudi Stato</span>
             </button>
         </div>
@@ -90,17 +118,19 @@
                 </tr>
             </thead>
             <tbody>
-                @if (!Documenti.Any())
+                @if (!DocumentiVisibili.Any())
                 {
                     <tr>
                         <td colspan="8" class="empty-state">
-                            Imposta i filtri e premi "Mostra Documenti ..." per caricare i documenti.
+                            @(Documenti.Any()
+                                ? "Nessun documento corrisponde ai filtri impostati a video."
+                                : "Imposta i filtri e premi \"Mostra Documenti ...\" per caricare i documenti.")
                         </td>
                     </tr>
                 }
                 else
                 {
-                    @foreach (var master in Documenti)
+                    @foreach (var master in DocumentiVisibili)
                     {
                         var m = master;
                         var espanso = ReferenceEquals(_espanso, m);
@@ -128,7 +158,7 @@
                                 </select>
                             </td>
                             <td>@m.NumeroDocumento</td>
-                            <td>@m.DataDocumento</td>
+                            <td>@FormattaData(m.DataDocumento)</td>
                             <td class="col-actions">
                                 <button class="btn btn-blue btn-sm"
                                         @onclick="() => CambioStato_Click(m)" @onclick:stopPropagation="true"
@@ -340,6 +370,63 @@
     private List<MasterDocumento> Documenti { get; set; } = new();
     private MasterDocumento? _espanso;
 
+    /// <summary>Filtro di ricerca parziale sul numero documento (case-insensitive).</summary>
+    private string _filtroNumeroDocumento = string.Empty;
+
+    /// <summary>Estremi (inclusi) del filtro sulla data documento; null = estremo non impostato.</summary>
+    private DateTime? _filtroDataDa;
+    private DateTime? _filtroDataA;
+
+    private bool FiltriAttivi
+        => !string.IsNullOrWhiteSpace(_filtroNumeroDocumento)
+           || _filtroDataDa is not null
+           || _filtroDataA is not null;
+
+    /// <summary>
+    /// Documenti effettivamente mostrati a video: è la lista caricata dall'API
+    /// filtrata per numero documento (ricerca parziale, senza distinzione di maiuscole)
+    /// e per intervallo di date (estremi inclusi, ciascuno facoltativo).
+    /// </summary>
+    private List<MasterDocumento> DocumentiVisibili
+    {
+        get
+        {
+            if (!FiltriAttivi) return Documenti;
+
+            IEnumerable<MasterDocumento> query = Documenti;
+
+            var numero = _filtroNumeroDocumento?.Trim();
+            if (!string.IsNullOrEmpty(numero))
+            {
+                query = query.Where(x => (x.NumeroDocumento ?? string.Empty)
+                    .Contains(numero, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (_filtroDataDa is not null || _filtroDataA is not null)
+            {
+                // I documenti con data assente o non interpretabile restano fuori
+                // quando è impostato un filtro per data.
+                query = query.Where(x =>
+                {
+                    var data = ParseDataDocumento(x.DataDocumento);
+                    if (data is null) return false;
+                    if (_filtroDataDa is { } da && data.Value.Date < da.Date) return false;
+                    if (_filtroDataA is { } a && data.Value.Date > a.Date) return false;
+                    return true;
+                });
+            }
+
+            return query.ToList();
+        }
+    }
+
+    private void PulisciFiltri()
+    {
+        _filtroNumeroDocumento = string.Empty;
+        _filtroDataDa = null;
+        _filtroDataA = null;
+    }
+
     private List<EmmaFornitori> _fornitori = new();
     private int _tipoDocIndex;
     private int _statoDocIndex;
@@ -402,6 +489,22 @@
 
     /// <summary>Formato invariante richiesto da input type="number".</summary>
     private static string Inv(decimal v) => v.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Le date arrivano dall'API come stringa "yyyy-MM-dd": a video si mostrano
+    /// in formato italiano "dd-MM-yyyy". Se il valore non è una data valida
+    /// viene restituito invariato.
+    /// </summary>
+    private static string FormattaData(string? data)
+        => ParseDataDocumento(data) is { } d
+            ? d.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)
+            : data ?? string.Empty;
+
+    /// <summary>Interpreta la data documento ("yyyy-MM-dd") restituita dall'API.</summary>
+    private static DateTime? ParseDataDocumento(string? data)
+        => DateTime.TryParseExact(data, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+            ? d
+            : null;
 
     private void ToggleDettagli(MasterDocumento m)
         => _espanso = ReferenceEquals(_espanso, m) ? null : m;
@@ -721,14 +824,14 @@
     /// <summary>Replica di CloseAllButton_OnClick ("Chiudi Stato" su tutti i documenti a video)</summary>
     private async Task ChiudiStato_Click()
     {
-        if (!Documenti.Any()) return;
+        if (!DocumentiVisibili.Any()) return;
         if (!await _dialogs.ConfermaAsync()) return;
 
         try
         {
             _busy = true;
 
-            foreach (var master in Documenti.ToList())
+            foreach (var master in DocumentiVisibili)
             {
                 await _docService.CambioStato(master);
             }
@@ -894,7 +997,7 @@
     /// <summary>Replica di ExportButton_OnClick — genera il CSV e lo fa scaricare dal browser.</summary>
     private async Task Export_Click()
     {
-        if (!Documenti.Any()) return;
+        if (!DocumentiVisibili.Any()) return;
 
         const string sep = ";";
         var sb = new StringBuilder();
@@ -905,7 +1008,7 @@
 
             var fornitori = await _fornitoriService.GetFornitoriAsync();
 
-            foreach (var doc in Documenti)
+            foreach (var doc in DocumentiVisibili)
             {
                 string fornExt = string.Empty;
                 var forn = fornitori.FirstOrDefault(x =>
