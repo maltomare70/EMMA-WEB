@@ -475,30 +475,94 @@
                 Allegato = emmaDoc?.allegato
             };
 
-            List<RigheDocumentoConciliazione>? righeDocumentoConciliazione = null;
+
             var dettagli = new ObservableCollection<RigheDocumento>();
             foreach (var articolo in doc.Articoli)
             {
                 //Sono le righe del documento di conciliazione (Ordini-Bolle e Bolle-Fatture) associate al master corrente.
-                if ( righeDocumentoConciliazione is null) righeDocumentoConciliazione = await LoadRigheDocumentoConciliazione(articolo.Id_Master);
+                List<RigheDocumentoConciliazione>?  righeDocumentoConciliazione = await LoadRigheDocumentoConciliazione(articolo.Id_Master);
                 //per le bolle vengono caricate entrambe le strutture
-                var r1 =  righeDocumentoConciliazione.Where(x => x.IdRiga?.ToLower() == articolo.Id_Riga?.ToLower() && x.Tipo == 1).ToList();
-                var r2 = righeDocumentoConciliazione.Where(x => x.IdRiga?.ToLower() == articolo.Id_Riga?.ToLower() && x.Tipo == 2).ToList();
+                var r1 = righeDocumentoConciliazione.Where(x => string.Equals(x.IdRiga, articolo.Id_Riga, StringComparison.OrdinalIgnoreCase) && x.Tipo == 1).ToList();
+                var r2 = righeDocumentoConciliazione.Where(x => string.Equals(x.IdRiga, articolo.Id_Riga, StringComparison.OrdinalIgnoreCase) && x.Tipo == 2).ToList();
+
+                List<RigheDocumentoConciliazione> item1 = new ();
+                List<RigheDocumentoConciliazione> item2 = new();
 
                 //per gli ordini devo caricare le righe bolle abbinate
-                if (r1.Count > 0 && r2.Count == 0)
+                if (r1.Any() && r2.Count == 0)
                 {
-                    var codice = r1.FirstOrDefault()?.Codice;
-                    righeDocumentoConciliazione = await LoadRigheDocumentoConciliazioneByCodice(codice!);
-                    r2 = righeDocumentoConciliazione.Where(x => x.Codice?.ToLower() == codice?.ToLower() && x.IdMaster != articolo.Id_Master).ToList();
+                    for (int i = 0; i < r1.Count;i++)
+                    {
+                        var codice1 = r1[i].Codice;
+                        var righeDocumentoConciliazione1 = await LoadRigheDocumentoConciliazioneByCodice(codice1!);
+                        var righe = righeDocumentoConciliazione1.Where(x => x.IdRiga != articolo.Id_Riga).ToList();
+                        foreach (var item in righeDocumentoConciliazione1)
+                        {
+                            // Evitiamo sovrascritture/duplicati: aggiungiamo solo se non è già presente
+                            if (string.Equals(item.IdRiga, articolo.Id_Riga, StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (!item1.Any(x => string.Equals(x.IdRiga, item.IdRiga, StringComparison.OrdinalIgnoreCase) && string.Equals(x.Codice, item.Codice, StringComparison.OrdinalIgnoreCase)))
+                                    item1.Add(item);
+                            }
+                            else
+                            {
+                                if (!item2.Any(x => string.Equals(x.IdRiga, item.IdRiga, StringComparison.OrdinalIgnoreCase) && string.Equals(x.Codice, item.Codice, StringComparison.OrdinalIgnoreCase)))
+                                    item2.Add(item);
+                            }
+                        }
+                    }
                 }
 
-                //per le fatture devo caricare le righe bolle abbinate
-                if (r2.Count > 0 && r1.Count == 0)
+                //Per le bolle devo caricare le righe fatture abbinate
+                if (r1.Any() && r2.Any())
                 {
-                    var codice = r2.FirstOrDefault()?.Codice;
-                    righeDocumentoConciliazione = await LoadRigheDocumentoConciliazioneByCodice(codice!);
-                    r1 = righeDocumentoConciliazione.Where(x => x.Codice?.ToLower() == codice?.ToLower() && x.IdMaster != articolo.Id_Master).ToList();
+                    for (int i = 0; i < r1.Count; i++)
+                    {
+                        var codice1 = r1[i].Codice;
+                        var righeDocumentoConciliazione1 = await LoadRigheDocumentoConciliazioneByCodice(codice1!);
+                        var righe = righeDocumentoConciliazione1.Where(x => x.IdRiga != articolo.Id_Riga).ToList();
+                        foreach (var item in righeDocumentoConciliazione1)
+                        {
+                            // Evitiamo sovrascritture/duplicati: aggiungiamo solo se non è già presente
+                            if (string.Equals(item.IdRiga, articolo.Id_Riga, StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (!item1.Any(x => string.Equals(x.IdRiga, item.IdRiga, StringComparison.OrdinalIgnoreCase) && string.Equals(x.Codice, item.Codice, StringComparison.OrdinalIgnoreCase)))
+                                    item1.Add(item);
+                            }
+                            else
+                            {
+                                if (!item2.Any(x => string.Equals(x.IdRiga, item.IdRiga, StringComparison.OrdinalIgnoreCase) && string.Equals(x.Codice, item.Codice, StringComparison.OrdinalIgnoreCase)))
+                                    item2.Add(item);
+                            }
+                        }
+                    }
+                }
+
+            
+
+                //per le fatture devo caricare le righe bolle abbinate
+                if (r2.Any() && r1.Count == 0)
+                {
+                    for (int i = 0; i < r2.Count; i++)
+                    {
+                        var codice2 = r2[i].Codice;
+                        var righeDocumentoConciliazione2 = await LoadRigheDocumentoConciliazioneByCodice(codice2!);
+                        var righe = righeDocumentoConciliazione2.Where(x => x.IdRiga != articolo.Id_Riga).ToList();
+                        foreach (var item in righeDocumentoConciliazione2)
+                        {
+                            // Evitiamo sovrascritture/duplicati: aggiungiamo solo se non è già presente
+                            if (string.Equals(item.IdRiga, articolo.Id_Riga, StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (!item1.Any(x => string.Equals(x.IdRiga, item.IdRiga, StringComparison.OrdinalIgnoreCase) && string.Equals(x.Codice, item.Codice, StringComparison.OrdinalIgnoreCase)))
+                                    item1.Add(item);
+                            }
+                            else
+                            {
+                                if (!item2.Any(x => string.Equals(x.IdRiga, item.IdRiga, StringComparison.OrdinalIgnoreCase) && string.Equals(x.Codice, item.Codice, StringComparison.OrdinalIgnoreCase)))
+                                    item2.Add(item);
+                            }
+                        }
+                    }
                 }
 
                 dettagli.Add(new RigheDocumento
@@ -512,8 +576,8 @@
                     Imponibile = articolo.Imponibile,
                     Totale = articolo.Totale,
                     UnitaMisura = articolo.UnitaMisura,
-                    RigheDocumentoConciliazione1 = r1,
-                    RigheDocumentoConciliazione2 = r2
+                    RigheDocumentoConciliazione1 = item1,
+                    RigheDocumentoConciliazione2 = item2
                 });
             }
 
