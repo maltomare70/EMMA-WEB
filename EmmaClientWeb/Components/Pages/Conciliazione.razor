@@ -847,6 +847,7 @@
                     {
                         r.Note = "";
                         r.Stato = "NON_CONCILIATA";
+                        r.CodiceAbbinamento = String.Empty;
                     }
                     var codide_fattura_non = m.Codice;
                     var qta_fattura_non = m.Qta;                    
@@ -862,7 +863,8 @@
                     var totale = conc.TotaleQtaBolle;
 
                     var id_fattura = conc.Fattura.Id;
-                    
+                    var id_abbinamento = Guid.NewGuid().ToString();
+
                     var r = fattureGrid.Where(x=>x.IdRiga == id_fattura).FirstOrDefault();
                     if (r is not null) {
                        // if (conc.DifferenzaQta == 0) r.Selezionato = true;
@@ -870,6 +872,7 @@
                         r.Note = conc.Note;
                         r.Stato = conc.StatoConciliazione;
                         r.Selezionato = true;
+                        r.CodiceAbbinamento = id_abbinamento;
                     }
 
                     var cod_fattura = conc.Fattura.Codice;
@@ -883,6 +886,7 @@
                         if (s is not null) {
                             s.Selezionato = true;
                             s.Qta_Conc = bolla.Qta;
+                            s.CodiceAbbinamento = id_abbinamento;
                         }
 
                         var score_bolla = bolla.FuzzyScore;
