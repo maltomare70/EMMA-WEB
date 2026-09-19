@@ -103,13 +103,14 @@
                             <th style="min-width:180px">Descrizione Articolo</th>
                             <th style="width:90px" class="cell-right">Quantità</th>
                             <th style="width:90px" class="cell-right">Qtà Conc.</th>
+                            <th style="width:150px">Cod. Abbinamento</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (Bolle.Count == 0)
                         {
                             <tr>
-                                <td colspan="8" class="empty-state">
+                                <td colspan="9" class="empty-state">
                                     Imposta i filtri e premi "Carica Dati" per caricare le bolle.
                                 </td>
                             </tr>
@@ -139,6 +140,7 @@
                                     </td>
                                     <td class="cell-right"></td>
                                     <td class="cell-right"></td>
+                                    <td></td>
                                 </tr>
 
                                 if (aperto)
@@ -173,6 +175,7 @@
                                             </td>
                                             <td class="cell-right"></td>
                                             <td class="cell-right"></td>
+                                            <td></td>
                                         </tr>
 
                                         if (docAperto)
@@ -193,6 +196,12 @@
                                                     <td>@r.DescrizioneArticolo</td>
                                                     <td class="cell-right">@(Qta(r.Qta))</td>
                                                     <td class="cell-right">@(Qta(r.Qta_Conc))</td>
+                                                    <td>
+                                                        <input type="text" class="cell-edit"
+                                                               value="@r.CodiceAbbinamento"
+                                                               @onchange="e => CambiaCodiceAbbinamento(r, e.Value?.ToString())"
+                                                               disabled="@_busy" />
+                                                    </td>
                                                 </tr>
                                             }
                                         }
@@ -240,13 +249,14 @@
                             <th style="width:90px" class="cell-right">Qtà Conc.</th>
                             <th style="width:110px">Stato</th>
                             <th style="min-width:160px">Note</th>
+                            <th style="width:150px">Cod. Abbinamento</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (Fatture.Count == 0)
                         {
                             <tr>
-                                <td colspan="11" class="empty-state">
+                                <td colspan="12" class="empty-state">
                                     Imposta i filtri e premi "Carica Dati" per caricare le fatture.
                                 </td>
                             </tr>
@@ -277,6 +287,7 @@
                                     </td>
                                     <td class="cell-right"></td>
                                     <td class="cell-right"></td>
+                                    <td></td>
                                     <td></td>
                                     <td></td>
                                 </tr>
@@ -316,6 +327,7 @@
                                             <td class="cell-right"></td>
                                             <td></td>
                                             <td></td>
+                                            <td></td>
                                         </tr>
 
                                         if (docAperto)
@@ -342,6 +354,12 @@
                                                         <input type="text" class="cell-edit"
                                                                value="@r.Note"
                                                                @onchange="e => CambiaNota(r, e.Value?.ToString())"
+                                                               disabled="@_busy" />
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" class="cell-edit"
+                                                               value="@r.CodiceAbbinamento"
+                                                               @onchange="e => CambiaCodiceAbbinamento(r, e.Value?.ToString())"
                                                                disabled="@_busy" />
                                                     </td>
                                                 </tr>
@@ -556,6 +574,7 @@
                         Qta_Conc = rigaConciliazione.qta_canc,
                         Note = rigaConciliazione.note,
                         Stato = rigaConciliazione.stato,
+                        CodiceAbbinamento = string.Empty,
                         Data = data
                     });
                 }
@@ -577,6 +596,7 @@
                         Qta_Conc = 0,
                         Note = string.Empty,
                         Stato = string.Empty,
+                        CodiceAbbinamento = string.Empty,
                         Data = data
                     });
                 }
@@ -629,6 +649,12 @@
     private void CambiaNota(RigaConciliazione riga, string? valore)
     {
         riga.Note = valore ?? string.Empty;
+    }
+
+    /// <summary>Codice di abbinamento della riga: per ora valorizzato solo a mano / dal salvataggio.</summary>
+    private void CambiaCodiceAbbinamento(RigaConciliazione riga, string? valore)
+    {
+        riga.CodiceAbbinamento = valore ?? string.Empty;
     }
 
     private void SelezionaTutto(List<RigaConciliazione> righe, bool valore)
@@ -822,6 +848,7 @@
                     {
                         r.Note = "";
                         r.Stato = "NON_CONCILIATA";
+                        r.CodiceAbbinamento = String.Empty;
                     }
                     var codide_fattura_non = m.Codice;
                     var qta_fattura_non = m.Qta;
@@ -837,6 +864,7 @@
                     var totale = conc.TotaleQtaBolle;
 
                     var id_fattura = conc.Fattura.Id;
+                    var id_abbinamento = Guid.NewGuid().ToString();
 
                     var r = fattureGrid.Where(x => x.IdRiga == id_fattura).FirstOrDefault();
                     if (r is not null)
@@ -846,6 +874,7 @@
                         r.Note = conc.Note;
                         r.Stato = conc.StatoConciliazione;
                         r.Selezionato = true;
+                        r.CodiceAbbinamento = id_abbinamento;
                     }
 
                     var cod_fattura = conc.Fattura.Codice;
@@ -860,6 +889,7 @@
                         {
                             s.Selezionato = true;
                             s.Qta_Conc = bolla.Qta;
+                            s.CodiceAbbinamento = id_abbinamento;
                         }
 
                         var score_bolla = bolla.FuzzyScore;
