@@ -457,7 +457,7 @@
     {
         if (docs is null) return;
 
-        var risultato = new List<MasterDocumento>();
+        var risultato = new List<MasterDocumento>();        
 
         foreach (var emmaDoc in docs)
         {
@@ -587,8 +587,10 @@
 
         Documenti = risultato
             .OrderBy(x => x.Fornitore)
-            .ThenBy(x => x.DataDocumento)
+            .ThenBy(x => x.TipDocumento)
+            .ThenBy(x => x.DataDocumento)            
             .ThenBy(x => x.NumeroDocumento)
+
             .ToList();
 
         _espanso = null;
