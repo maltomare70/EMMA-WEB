@@ -29,6 +29,34 @@
             <button class="btn btn-red2" @onclick="Elimina_Click" disabled="@(_busy || _selezionato is null)">Elimina Selezionato</button>
             <button class="btn btn-info" @onclick="Salva_Click" disabled="@(_busy || _fornitoreSelezionato is null)">Salva Modifiche</button>
 
+            <div class="emma-separator"></div>
+
+            <button class="btn btn-default" @onclick="Ricarica" disabled="@(_busy || _fornitoreSelezionato is null)">🔄 Ricarica</button>
+
+            <div class="emma-separator"></div>
+
+            <div class="emma-field">
+                <label for="txtFiltroCodice">Codice:</label>
+                <input id="txtFiltroCodice" class="emma-input" type="text" style="width:180px"
+                       placeholder="Filtra per codice"
+                       @bind="_filtroCodice" @bind:event="oninput" @bind:after="OnFiltroChanged"
+                       disabled="@_busy" />
+            </div>
+
+            <div class="emma-field">
+                <label for="txtFiltroDescrizione">Descrizione:</label>
+                <input id="txtFiltroDescrizione" class="emma-input" type="text" style="width:240px"
+                       placeholder="Filtra per descrizione"
+                       @bind="_filtroDescrizione" @bind:event="oninput" @bind:after="OnFiltroChanged"
+                       disabled="@_busy" />
+            </div>
+
+            <button class="btn btn-default" @onclick="PulisciFiltri" disabled="@(_busy || !FiltriAttivi)">Pulisci filtri</button>
+
+            @if (FiltriAttivi)
+            {
+                <span class="file-label">@ArticoliFiltrati.Count() di @ListaArticoli.Count articoli</span>
+            }
             @if (ModificheInSospeso > 0)
             {
                 <span class="file-label">@ModificheInSospeso modifica/e non salvate</span>
@@ -50,17 +78,24 @@
                 </tr>
             </thead>
             <tbody>
-                @if (!ListaArticoli.Any())
+                @{
+                    var articoliVisibili = ArticoliFiltrati.ToList();
+                }
+                @if (!articoliVisibili.Any())
                 {
                     <tr>
                         <td colspan="8" class="empty-state">
-                            @(_fornitoreSelezionato is null ? "Seleziona un fornitore per vedere gli articoli." : "Nessun articolo per questo fornitore.")
+                            @(_fornitoreSelezionato is null
+                                ? "Seleziona un fornitore per vedere gli articoli."
+                                : FiltriAttivi
+                                    ? "Nessun articolo corrisponde ai filtri impostati."
+                                    : "Nessun articolo per questo fornitore.")
                         </td>
                     </tr>
                 }
                 else
                 {
-                    @foreach (var a in ListaArticoli)
+                    @foreach (var a in articoliVisibili)
                     {
                         <tr @key="a" class="@RowCss(a)" @onclick="() => _selezionato = a">
                             <td><input class="cell-edit" value="@a.codice" @onchange="e => a.codice = e.Value?.ToString() ?? string.Empty" /></td>
@@ -87,11 +122,63 @@
     private int _fornitoreSelezionatoId;
     private EmmaArticoli? _selezionato;
     private bool _busy;
+
+    // Filtri di ricerca sulla griglia (lato client, sulla lista gia' caricata)
+    private string _filtroCodice = string.Empty;
+    private string _filtroDescrizione = string.Empty;
+
     private EmmaDialogs _dialogs = default!;
     private IArticoliServiceClient _articoliService = default!;
     private IFornitoriServiceClient _fornitoriService = default!;
 
     private int ModificheInSospeso => ListaArticoli.Count(a => a.id == 0 || a.IsDirty);
+
+    private bool FiltriAttivi =>
+        !string.IsNullOrWhiteSpace(_filtroCodice) || !string.IsNullOrWhiteSpace(_filtroDescrizione);
+
+    /// <summary>
+    /// Lista mostrata in griglia: ListaArticoli filtrata per codice e descrizione
+    /// (ricerca "contiene", senza distinzione tra maiuscole e minuscole).
+    /// Le righe appena aggiunte (id == 0) restano sempre visibili, per non perderle
+    /// di vista prima del salvataggio.
+    /// </summary>
+    private IEnumerable<EmmaArticoli> ArticoliFiltrati
+    {
+        get
+        {
+            IEnumerable<EmmaArticoli> query = ListaArticoli;
+
+            var codice = _filtroCodice?.Trim();
+            if (!string.IsNullOrEmpty(codice))
+            {
+                query = query.Where(a => a.id == 0
+                    || (a.codice ?? string.Empty).Contains(codice, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var descrizione = _filtroDescrizione?.Trim();
+            if (!string.IsNullOrEmpty(descrizione))
+            {
+                query = query.Where(a => a.id == 0
+                    || (a.descrizione ?? string.Empty).Contains(descrizione, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return query;
+        }
+    }
+
+    // Se la riga selezionata esce dal filtro, la deseleziono: evita di eliminare/agire
+    // su una riga che non e' piu' visibile in griglia.
+    private void OnFiltroChanged()
+    {
+        if (_selezionato is not null && !ArticoliFiltrati.Any(a => ReferenceEquals(a, _selezionato)))
+            _selezionato = null;
+    }
+
+    private void PulisciFiltri()
+    {
+        _filtroCodice = string.Empty;
+        _filtroDescrizione = string.Empty;
+    }
 
     protected override void OnInitialized()
     {
@@ -179,6 +266,19 @@
         {
             _busy = false;
         }
+    }
+
+    /// <summary>Ricarica dal servizio gli articoli del fornitore selezionato.</summary>
+    private async Task Ricarica()
+    {
+        if (_fornitoreSelezionato is null || string.IsNullOrWhiteSpace(_fornitoreSelezionato.descrizione)) return;
+
+        if (ModificheInSospeso > 0)
+        {
+            if (!await _dialogs.ConfermaAsync("Ci sono modifiche non salvate. Ricaricare comunque?")) return;
+        }
+
+        await CaricaDati(_fornitoreSelezionato.descrizione);
     }
 
     /// <summary>Replica di Aggiungi_Click</summary>

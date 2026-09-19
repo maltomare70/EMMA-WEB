@@ -15,6 +15,23 @@
             <button class="btn btn-info" @onclick="Salva_Click" disabled="@_busy">Salva Modifiche</button>
             <div class="emma-separator"></div>
             <button class="btn btn-default" @onclick="Ricarica" disabled="@_busy">🔄 Ricarica</button>
+
+            <div class="emma-separator"></div>
+
+            <div class="emma-field">
+                <label for="txtFiltroDescrizione">Descrizione:</label>
+                <input id="txtFiltroDescrizione" class="emma-input" type="text" style="width:240px"
+                       placeholder="Filtra per descrizione"
+                       @bind="_filtroDescrizione" @bind:event="oninput" @bind:after="OnFiltroChanged"
+                       disabled="@_busy" />
+            </div>
+
+            <button class="btn btn-default" @onclick="PulisciFiltro" disabled="@(_busy || !FiltroAttivo)">Pulisci filtro</button>
+
+            @if (FiltroAttivo)
+            {
+                <span class="file-label">@FornitoriFiltrati.Count() di @ListaFornitori.Count fornitori</span>
+            }
             @if (ModificheInSospeso > 0)
             {
                 <span class="file-label">@ModificheInSospeso modifica/e non salvate</span>
@@ -33,15 +50,20 @@
                 </tr>
             </thead>
             <tbody>
-                @if (!ListaFornitori.Any())
+                @{
+                    var fornitoriVisibili = FornitoriFiltrati.ToList();
+                }
+                @if (!fornitoriVisibili.Any())
                 {
                     <tr>
-                        <td colspan="5" class="empty-state">Nessun fornitore presente.</td>
+                        <td colspan="5" class="empty-state">
+                            @(FiltroAttivo ? "Nessun fornitore corrisponde al filtro impostato." : "Nessun fornitore presente.")
+                        </td>
                     </tr>
                 }
                 else
                 {
-                    @foreach (var f in ListaFornitori)
+                    @foreach (var f in fornitoriVisibili)
                     {
                         <tr @key="f" class="@RowCss(f)" @onclick="() => _selezionato = f">
                             <td>
@@ -68,10 +90,44 @@
     private List<EmmaFornitori> ListaFornitori { get; set; } = new();
     private EmmaFornitori? _selezionato;
     private bool _busy;
+
+    // Filtro di ricerca sulla griglia (lato client, sulla lista gia' caricata)
+    private string _filtroDescrizione = string.Empty;
+
     private EmmaDialogs _dialogs = default!;
     private IFornitoriServiceClient _fornitoriService = default!;
 
     private int ModificheInSospeso => ListaFornitori.Count(f => f.id == 0 || f.IsDirty);
+
+    private bool FiltroAttivo => !string.IsNullOrWhiteSpace(_filtroDescrizione);
+
+    /// <summary>
+    /// Lista mostrata in griglia: ListaFornitori filtrata per descrizione
+    /// (ricerca "contiene", senza distinzione tra maiuscole e minuscole).
+    /// Le righe appena aggiunte (id == 0) restano sempre visibili, per non perderle
+    /// di vista prima del salvataggio.
+    /// </summary>
+    private IEnumerable<EmmaFornitori> FornitoriFiltrati
+    {
+        get
+        {
+            var descrizione = _filtroDescrizione?.Trim();
+            if (string.IsNullOrEmpty(descrizione)) return ListaFornitori;
+
+            return ListaFornitori.Where(f => f.id == 0
+                || (f.descrizione ?? string.Empty).Contains(descrizione, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    // Se la riga selezionata esce dal filtro, la deseleziono: evita di eliminare/agire
+    // su una riga che non e' piu' visibile in griglia.
+    private void OnFiltroChanged()
+    {
+        if (_selezionato is not null && !FornitoriFiltrati.Any(f => ReferenceEquals(f, _selezionato)))
+            _selezionato = null;
+    }
+
+    private void PulisciFiltro() => _filtroDescrizione = string.Empty;
 
     protected override void OnInitialized()
     {
