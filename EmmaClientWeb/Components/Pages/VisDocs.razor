@@ -437,6 +437,11 @@
 
     private bool _busy;
 
+    // Cache delle righe di conciliazione, con chiave Id_Master (evita chiamate ripetute al servizio
+    // quando più articoli dello stesso documento condividono lo stesso Id_Master).
+    private readonly Dictionary<string, List<RigheDocumentoConciliazione>> _cacheRigheConciliazione
+        = new(StringComparer.OrdinalIgnoreCase);
+
     // Popup righe di conciliazione
     private bool _conciliazioneVisibile;
     private string _conciliazioneTitolo = string.Empty;
@@ -571,6 +576,9 @@
     {
         if (docs is null) return;
 
+        // dati freschi ad ogni ricaricamento della griglia
+        _cacheRigheConciliazione.Clear();
+
         var risultato = new List<MasterDocumento>();        
 
         foreach (var emmaDoc in docs)
@@ -594,7 +602,7 @@
             foreach (var articolo in doc.Articoli)
             {
                 //Sono le righe del documento di conciliazione (Ordini-Bolle e Bolle-Fatture) associate al master corrente.
-                List<RigheDocumentoConciliazione>?  righeDocumentoConciliazione = await LoadRigheDocumentoConciliazione(articolo.Id_Master);
+                List<RigheDocumentoConciliazione>?  righeDocumentoConciliazione = await GetRigheDocumentoConciliazioneCached(articolo.Id_Master);
                 //per le bolle vengono caricate entrambe le strutture
                 var r1 = righeDocumentoConciliazione.Where(x => string.Equals(x.IdRiga, articolo.Id_Riga, StringComparison.OrdinalIgnoreCase) && x.Tipo == 1).ToList();
                 var r2 = righeDocumentoConciliazione.Where(x => string.Equals(x.IdRiga, articolo.Id_Riga, StringComparison.OrdinalIgnoreCase) && x.Tipo == 2).ToList();
@@ -735,6 +743,21 @@
             });
         });
 
+        return righe;
+    }
+
+    /// <summary>
+    /// Ritorna le righe di conciliazione di un Id_Master usando la cache locale:
+    /// il servizio viene interrogato una sola volta per ciascun Id_Master.
+    /// </summary>
+    private async Task<List<RigheDocumentoConciliazione>> GetRigheDocumentoConciliazioneCached(string? idMaster)
+    {
+        if (string.IsNullOrWhiteSpace(idMaster)) return new List<RigheDocumentoConciliazione>();
+
+        if (_cacheRigheConciliazione.TryGetValue(idMaster, out var cached)) return cached;
+
+        var righe = await LoadRigheDocumentoConciliazione(idMaster);
+        _cacheRigheConciliazione[idMaster] = righe;
         return righe;
     }
 
