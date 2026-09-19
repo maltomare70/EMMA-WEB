@@ -55,7 +55,9 @@
     Esegue "docker pull" dell'immagine prima di avviare.
 
 .PARAMETER Recreate
-    Se un container con lo stesso nome esiste gia', lo ferma e lo rimuove.
+    Se un container con lo stesso nome esiste gia', lo ferma e lo rimuove
+    senza chiedere conferma. Senza questo switch lo script chiede in modo
+    interattivo se cancellarlo e ricrearlo.
 
 .PARAMETER Foreground
     Avvia in primo piano (--rm -it) invece che in background.
@@ -290,6 +292,42 @@ function Confirm-KeysVolume {
     }
 }
 
+# ---------------------------------------------------------------------------
+# Domanda si'/no da console.
+#
+# In una sessione non interattiva (scheduled task, CI, output redirezionato)
+# Read-Host non ha nessuno che risponda: in quel caso si ritorna il valore di
+# default senza bloccare lo script.
+# ---------------------------------------------------------------------------
+function Confirm-YesNo {
+    param(
+        [string]$Question,
+        [bool]$DefaultYes = $false
+    )
+
+    if (-not [Environment]::UserInteractive) {
+        Write-Warn "Sessione non interattiva: non posso chiedere conferma."
+        return $DefaultYes
+    }
+
+    $suffix = if ($DefaultYes) { '[S/n]' } else { '[s/N]' }
+
+    while ($true) {
+        $answer = Read-Host ("[emma-web] {0} {1}" -f $Question, $suffix)
+        if ([string]::IsNullOrWhiteSpace($answer)) { return $DefaultYes }
+
+        switch ($answer.Trim().ToLowerInvariant()) {
+            's'   { return $true }
+            'si'  { return $true }
+            'y'   { return $true }
+            'yes' { return $true }
+            'n'   { return $false }
+            'no'  { return $false }
+            default { Write-Warn "Rispondi 's' (si') oppure 'n' (no)." }
+        }
+    }
+}
+
 function Remove-ExistingContainer {
     param([string]$ContainerName)
 
@@ -383,9 +421,16 @@ if ($null -ne $existing -and -not $DryRun) {
         Remove-ExistingContainer -ContainerName $Name
     }
     else {
-        Write-Err "Esiste gia' un container '$Name' (stato: $existing)."
-        Write-Err "Usa -Recreate per ricrearlo, oppure -Stop per rimuoverlo."
-        return
+        Write-Warn "Esiste gia' un container '$Name' (stato: $existing)."
+
+        if (Confirm-YesNo -Question "Lo cancello e lo ricreo?" -DefaultYes $false) {
+            Remove-ExistingContainer -ContainerName $Name
+        }
+        else {
+            Write-Err "Operazione annullata: il container '$Name' resta invariato."
+            Write-Info "Usa -Recreate per ricrearlo senza conferma, oppure -Stop per rimuoverlo."
+            return
+        }
     }
 }
 
