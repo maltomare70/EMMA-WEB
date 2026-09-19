@@ -43,7 +43,7 @@
             <div class="emma-field">
                 <label class="emma-check">
                     <input type="checkbox" @bind="_nascondiRighe" disabled="@_busy" />
-                    <span>Nascondi righe</span>
+                    <span>Nascondi righe conciliate</span>
                 </label>
             </div>
 
@@ -175,9 +175,9 @@
                                             <td class="cell-right"></td>
                                         </tr>
 
-                                        if (docAperto && !_nascondiRighe)
+                                        if (docAperto)
                                         {
-                                            foreach (var riga in d)
+                                            foreach (var riga in RigheVisibili(d))
                                             {
                                                 var r = riga;
                                                 <tr @key="r" class="child-row @(r.Selezionato ? "selected" : "")">
@@ -318,9 +318,9 @@
                                             <td></td>
                                         </tr>
 
-                                        if (docAperto && !_nascondiRighe)
+                                        if (docAperto)
                                         {
-                                            foreach (var riga in d)
+                                            foreach (var riga in RigheVisibili(d))
                                             {
                                                 var r = riga;
                                                 <tr @key="r" class="child-row @(r.Selezionato ? "selected" : "")">
@@ -400,7 +400,8 @@
 
     private bool _busy;
 
-    /// <summary>Filtro "Nascondi righe": nasconde le sole righe di dettaglio articolo.</summary>
+    /// <summary>Filtro "Nascondi righe conciliate": nasconde le sole righe di dettaglio
+    /// articolo gia' conciliate correttamente (Qta - Qta_Conc == 0).</summary>
     private bool _nascondiRighe;
 
     private EmmaDialogs _dialogs = default!;
@@ -442,6 +443,13 @@
     }
 
     private static string Qta(decimal v) => v.ToString("0.###", CultureInfo.CurrentCulture);
+
+    /// <summary>Righe di dettaglio da mostrare in un gruppo documento: con il filtro
+    /// "Nascondi righe conciliate" attivo esclude le righe con Qta - Qta_Conc pari a zero.</summary>
+    private IEnumerable<RigaConciliazione> RigheVisibili(IEnumerable<RigaConciliazione> righe)
+        => _nascondiRighe
+            ? righe.Where(r => r.Qta - r.Qta_Conc != 0m)
+            : righe;
 
     /// <summary>Stato da segnalare: valorizzato e diverso da "CONCILIATO".</summary>
     private static bool StatoDaSegnalare(string? stato)
