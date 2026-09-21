@@ -1,0 +1,486 @@
+﻿@using System.Globalization
+@using EmmaServer.Entities.Dtos
+@inject UserSession Session
+@inject EmmaServiceFactory Factory
+@inject NavigationManager Nav
+
+@* Vista di conciliazione a due griglie affiancate, condivisa dalle pagine
+   /conciliazione (Bolle/DDT -> Fatture) e /conciliazione-ordini (Ordini -> Bolle/DDT).
+   Tutto ciò che cambia tra le due varianti è un parametro: chiave di conciliazione,
+   tipi documento delle due griglie, titoli, etichette e filtro date.
+   SOLO GUI e chiamate di caricamento dati: la logica di conciliazione sta lato server. *@
+
+<div class="emma-page @(_busy ? "busy" : "")">
+
+    <!-- Border toolbar filtri -->
+    <div class="emma-toolbar">
+        <div class="emma-toolbar-left">
+
+            <div class="emma-field">
+                <label>Fornitore:</label>
+                <select class="emma-select" style="width:400px" @bind="_fornitoreDescrizione" disabled="@_busy">
+                    <option value="">Seleziona Fornitore...</option>
+                    @foreach (var f in _fornitori)
+                    {
+                        <option value="@f.descrizione">@f.descrizione</option>
+                    }
+                </select>
+            </div>
+
+            <div class="emma-separator"></div>
+
+            <div class="emma-field">
+                <label>Da Data:</label>
+                <input type="date" class="emma-input" style="width:170px" @bind="_daData" disabled="@_busy" />
+            </div>
+
+            <div class="emma-field">
+                <label>A Data:</label>
+                <input type="date" class="emma-input" style="width:170px" @bind="_aData" disabled="@_busy" />
+            </div>
+
+            <div class="emma-separator"></div>
+
+            <div class="emma-field">
+                <label class="emma-check">
+                    <input type="checkbox" @bind="_nascondiRighe" disabled="@_busy" />
+                    <span>Nascondi righe conciliate</span>
+                </label>
+            </div>
+
+            <div class="emma-separator"></div>
+
+            <button class="btn btn-blue" @onclick="CaricaDati_Click" disabled="@_busy">
+                <span>🔄</span><span>Carica Dati</span>
+            </button>
+
+            <div class="emma-separator"></div>
+
+            <button class="btn btn-green" @onclick="ProponiConciliazione_Click" disabled="@(_busy)">
+                <span>🔗</span><span>Elabora</span>
+            </button>
+
+            <div class="emma-separator"></div>
+
+            <button class="btn btn-blue" @onclick="Concilia_Click"
+                    disabled="@(_busy)">
+                <span>💾</span><span>Salva</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Due grid identiche affiancate -->
+    <div class="conc-split">
+
+        <!-- ============ GRID SINISTRA: documenti di origine ============ -->
+        <ConciliazionePane Titolo="@TitoloSinistra"
+                           Righe="@Sinistra"
+                           TestoVuoto="@TestoVuotoSinistra"
+                           ConStatoENote="false"
+                           Busy="@_busy"
+                           NascondiConciliate="@_nascondiRighe"
+                           OnSelezioneCambiata="@(() => StateHasChanged())" />
+
+        <!-- ============ GRID DESTRA: documenti da conciliare ============ -->
+        <ConciliazionePane Titolo="@TitoloDestra"
+                           Righe="@Destra"
+                           TestoVuoto="@TestoVuotoDestra"
+                           ConStatoENote="true"
+                           Busy="@_busy"
+                           NascondiConciliate="@_nascondiRighe"
+                           OnSelezioneCambiata="@(() => StateHasChanged())" />
+
+    </div>
+</div>
+
+<EmmaDialogs @ref="_dialogs" />
+
+@code {
+    /// <summary>Indici dell'array restituito da ArticoliServiceManager.GetTipodocs().</summary>
+    public static class TipiDoc
+    {
+        public const int Tutti = 0;
+        public const int Ordine = 1;
+        public const int Ddt = 2;
+        public const int FatturaAccompagnatoria = 3;
+        public const int Fattura = 4;
+        public const int NotaDiAccredito = 5; // non gestita
+    }
+
+    // ---------------- Parametri della variante ----------------
+
+    /// <summary>Chiave passata al servizio di conciliazione ("BOLLE-FATTURE", "ORDINI-BOLLE").</summary>
+    [Parameter, EditorRequired] public string Chiave { get; set; } = string.Empty;
+
+    /// <summary>Titolo della griglia di sinistra (documenti di origine).</summary>
+    [Parameter, EditorRequired] public string TitoloSinistra { get; set; } = string.Empty;
+
+    /// <summary>Titolo della griglia di destra (documenti da conciliare).</summary>
+    [Parameter, EditorRequired] public string TitoloDestra { get; set; } = string.Empty;
+
+    /// <summary>Tipi documento caricati nella griglia di sinistra (vedi TipiDoc).</summary>
+    [Parameter, EditorRequired] public int[] TipiDocSinistra { get; set; } = Array.Empty<int>();
+
+    /// <summary>Tipi documento caricati nella griglia di destra (vedi TipiDoc).</summary>
+    [Parameter, EditorRequired] public int[] TipiDocDestra { get; set; } = Array.Empty<int>();
+
+    /// <summary>Applica il filtro Da Data / A Data alla griglia di sinistra.</summary>
+    [Parameter] public bool FiltraDateSinistra { get; set; } = true;
+
+    /// <summary>Applica il filtro Da Data / A Data alla griglia di destra.</summary>
+    [Parameter] public bool FiltraDateDestra { get; set; } = true;
+
+    /// <summary>Etichetta singolare usata nei messaggi (es. "bolla", "ordine").</summary>
+    [Parameter] public string NomeRigheSinistra { get; set; } = "sinistra";
+
+    /// <summary>Etichetta singolare usata nei messaggi (es. "fattura", "bolla").</summary>
+    [Parameter] public string NomeRigheDestra { get; set; } = "destra";
+
+    /// <summary>Testo mostrato nella griglia di sinistra quando non ci sono righe.</summary>
+    [Parameter] public string TestoVuotoSinistra { get; set; } = "Imposta i filtri e premi \"Carica Dati\" per caricare i documenti.";
+
+    /// <summary>Testo mostrato nella griglia di destra quando non ci sono righe.</summary>
+    [Parameter] public string TestoVuotoDestra { get; set; } = "Imposta i filtri e premi \"Carica Dati\" per caricare i documenti.";
+
+    // ---------------- Stato ----------------
+
+    /// <summary>Righe "piatte" (testata + riga articolo) della griglia di sinistra.</summary>
+    private List<RigaConciliazione> Sinistra { get; set; } = new();
+
+    /// <summary>Righe "piatte" (testata + riga articolo) della griglia di destra.</summary>
+    private List<RigaConciliazione> Destra { get; set; } = new();
+
+    private List<EmmaFornitori> _fornitori = new();
+    private string _fornitoreDescrizione = string.Empty;
+    private DateTime? _daData = DateTime.Today.AddMonths(-1);
+    private DateTime? _aData = DateTime.Today;
+
+    private bool _busy;
+
+    /// <summary>Filtro "Nascondi righe conciliate": nasconde le sole righe di dettaglio
+    /// articolo gia' conciliate correttamente (Qta - Qta_Conc == 0).</summary>
+    private bool _nascondiRighe;
+
+    private EmmaDialogs _dialogs = default!;
+
+    private IDocServiceClient _docService = default!;
+    private IFornitoriServiceClient _fornitoriService = default!;
+    private IConciliazioneServiceClient _conciliazioneService = default!;
+
+    protected override void OnInitialized()
+    {
+        if (!Session.IsAuthenticated) { Nav.NavigateTo("/login"); return; }
+
+        _docService = Factory.Docs();
+        _fornitoriService = Factory.Fornitori();
+        _conciliazioneService = Factory.Conciliazione();
+    }
+
+    /// <summary>Come in VisDocs: i fornitori si caricano dopo il primo render.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Session.IsAuthenticated) return;
+
+        try
+        {
+            _busy = true;
+            var fornitori = await _fornitoriService.GetFornitoriAsync();
+            _fornitori = fornitori.OrderBy(x => x.descrizione).ToList();
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        StateHasChanged();
+    }
+
+    // ---------------- Caricamento dati ----------------
+
+    /// <summary>Pulsante "Carica Dati": popola entrambe le grid.</summary>
+    private async Task CaricaDati_Click()
+    {
+        if (_daData.HasValue && _aData.HasValue && _daData > _aData)
+        {
+            await _dialogs.ErroreAsync("La data iniziale non può essere successiva alla data finale.");
+            return;
+        }
+
+        try
+        {
+            _busy = true;
+
+            List<EmmaConciliaRighe> righe = await _conciliazioneService.GetAllAsync(Chiave);
+
+            Sinistra = ToRighe(await GetDocs(TipiDocSinistra), righe, FiltraDateSinistra);
+            Destra = ToRighe(await GetDocs(TipiDocDestra), righe, FiltraDateDestra);
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Chiamata all'API documenti (POST /api/v1/doc) per i tipi documento indicati.</summary>
+    private async Task<List<EmmaDoc>> GetDocs(IEnumerable<int> tipiDoc)
+    {
+        var risultato = new List<EmmaDoc>();
+
+        foreach (var tipoDoc in tipiDoc)
+        {
+            var filtri = new EmmaDocFilters
+            {
+                Fornitore = _fornitoreDescrizione ?? string.Empty,
+                TipoDoc = tipoDoc,
+                Stato = 0 // 0 = Aperto
+            };
+
+            var docs = await _docService.GetDocsAsync(filtri);
+            if (docs is not null) risultato.AddRange(docs);
+        }
+
+        return risultato;
+    }
+
+    /// <summary>Appiattisce i documenti in righe articolo applicando (se richiesto) il filtro date lato client.</summary>
+    private List<RigaConciliazione> ToRighe(List<EmmaDoc> docs, List<EmmaConciliaRighe> righe, bool filtraDate)
+    {
+        var risultato = new List<RigaConciliazione>();
+
+        foreach (var emmaDoc in docs)
+        {
+            var doc = emmaDoc?.ToDoc();
+            if (doc is null) continue;
+
+            var data = ParseData(doc.DataBolla);
+            if (filtraDate && !InIntervallo(data)) continue;
+
+            foreach (var articolo in doc.Articoli)
+            {
+                var rigaConciliazione = righe.FirstOrDefault(x => x.id_riga == articolo.Id_Riga);
+
+                risultato.Add(new RigaConciliazione
+                {
+                    Selezionato = rigaConciliazione is not null && rigaConciliazione.flag != 0,
+                    IdMaster = doc.Id,
+                    IdRiga = articolo.Id_Riga,
+                    Fornitore = doc.Mittente,
+                    NumeroDocumento = doc.NumeroBolla,
+                    DataDocumento = doc.DataBolla,
+                    TipoDocumento = doc.TipoDocumento,
+                    CodiceArticolo = articolo.Codice,
+                    DescrizioneArticolo = articolo.Descrizione,
+                    UnitaMisura = articolo.UnitaMisura,
+                    Qta = articolo.Quantita,
+                    Qta_Conc = rigaConciliazione?.qta_canc ?? 0,
+                    Note = rigaConciliazione?.note ?? string.Empty,
+                    Stato = rigaConciliazione?.stato ?? string.Empty,
+                    CodiceAbbinamento = string.Empty,
+                    Data = data
+                });
+            }
+        }
+
+        return risultato
+            .OrderBy(x => x.Data ?? DateTime.MaxValue)
+            .ThenBy(x => x.NumeroDocumento)
+            .ThenBy(x => x.CodiceArticolo)
+            .ToList();
+    }
+
+    /// <summary>Le date arrivano dall'API come "yyyy-MM-dd"</summary>
+    private static DateTime? ParseData(string? valore)
+    {
+        if (string.IsNullOrWhiteSpace(valore)) return null;
+
+        var formati = new[] { "yyyy-MM-dd"/* , "dd/MM/yyyy", "dd-MM-yyyy", "yyyy/MM/dd" */ };
+
+        if (DateTime.TryParseExact(valore, formati, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var d)) return d;
+
+        if (DateTime.TryParse(valore, CultureInfo.CurrentCulture,
+                DateTimeStyles.None, out var d2)) return d2;
+
+        return null;
+    }
+
+    /// <summary>Filtro Da Data / A Data lato client: EmmaDocFilters espone solo una data singola.</summary>
+    private bool InIntervallo(DateTime? data)
+    {
+        if (!_daData.HasValue && !_aData.HasValue) return true;
+        if (data is null) return false;
+
+        if (_daData.HasValue && data.Value.Date < _daData.Value.Date) return false;
+        if (_aData.HasValue && data.Value.Date > _aData.Value.Date) return false;
+
+        return true;
+    }
+
+    // ---------------- Conciliazione ----------------
+
+    /// <summary>Pulsante "Salva": persiste le conciliazioni proposte.</summary>
+    private async Task Concilia_Click()
+    {
+        if (Sinistra.Count == 0 || Destra.Count == 0)
+        {
+            await _dialogs.ErroreAsync("Caricare prima i dati per poter proporre la conciliazione.");
+            return;
+        }
+
+        try
+        {
+            _busy = true;
+
+            await SalvaConciliazioni(Chiave);
+
+            await _dialogs.MostraMessaggioAsync("Informazione", "Salvataggio conciliazioni terminato.");
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>
+    /// Pulsante "Elabora": match esatto in .NET + fuzzy via Python su non-matching.
+    /// </summary>
+    private async Task ProponiConciliazione_Click()
+    {
+        // var righeSinistra = Sinistra.Where(r => r.Selezionato).ToList();
+        // var righeDestra = Destra.Where(r => r.Selezionato).ToList();
+
+        var righeSinistra = Sinistra.ToList();
+        var righeDestra = Destra.ToList();
+
+#if !DEBUG
+        if (righeSinistra.Count == 0 || righeDestra.Count == 0)
+        {
+            await _dialogs.ErroreAsync("Selezionare almeno una riga in ciascuna griglia.");
+            return;
+        }
+#endif
+
+        if (!await _dialogs.ConfermaAsync($"Conciliare {righeSinistra.Count} righe {NomeRigheSinistra} con {righeDestra.Count} righe {NomeRigheDestra}?")) return;
+
+        try
+        {
+            _busy = true;
+
+            List<ConciliazioneResponse> ret = await _conciliazioneService.GetConciliazione(Chiave, righeSinistra, righeDestra);
+
+            var s = $"✓ Conciliato:";
+            ret.ForEach(x =>
+            {
+                string fornitore = x.Document.Fornitore;
+
+                var sinistraGrid = Sinistra.Where(r => r.Fornitore == fornitore).ToList();
+                var destraGrid = Destra.Where(r => r.Fornitore == fornitore).ToList();
+
+                var b = x.Document.BolleNonConciliate.Count();
+                var f = x.Document.FattureNonConciliate.Count();
+                var c = x.Document.Conciliazioni.Count();
+
+                s += $"\n\n" +
+                     $"Fornitore: {fornitore}\n" +
+                     $"{TitoloSinistra} non conciliate: {b}\n" +
+                     $"{TitoloDestra} non conciliate: {f}\n" +
+                     $"Conciliazioni proposte: {c}";
+
+                foreach (var n in x.Document.BolleNonConciliate)
+                {
+                    var id_bolla_non = n.Id;
+                    var codide_bolla_non = n.Codice;
+                    var qta_bolla_non = n.Qta;
+                }
+
+                foreach (var m in x.Document.FattureNonConciliate)
+                {
+                    var id_fattura_non = m.Id;
+                    var r = destraGrid.Where(y => y.IdRiga == id_fattura_non).FirstOrDefault();
+                    if (r is not null)
+                    {
+                        r.Note = "";
+                        r.Stato = "NON_CONCILIATA";
+                        r.CodiceAbbinamento = String.Empty;
+                    }
+                    var codide_fattura_non = m.Codice;
+                    var qta_fattura_non = m.Qta;
+                }
+
+                // Ciclo per ogni riga della griglia di destra
+                foreach (var conc in x.Document.Conciliazioni)
+                {
+                    var stato_conc = conc.StatoConciliazione;
+                    var note = conc.Note;
+
+                    var diff = conc.DifferenzaQta;
+                    var totale = conc.TotaleQtaBolle;
+
+                    var id_fattura = conc.Fattura.Id;
+                    var id_abbinamento = Guid.NewGuid().ToString();
+
+                    var r = destraGrid.Where(y => y.IdRiga == id_fattura).FirstOrDefault();
+                    if (r is not null)
+                    {
+                        //if (conc.DifferenzaQta == 0) r.Selezionato = true;
+                        r.Qta_Conc = conc.TotaleQtaBolle;
+                        r.Note = conc.Note;
+                        r.Stato = conc.StatoConciliazione;
+                        r.Selezionato = true;
+                        r.CodiceAbbinamento = id_abbinamento;
+                    }
+
+                    var cod_fattura = conc.Fattura.Codice;
+                    var qta_fattura = conc.Fattura.Qta;
+
+                    var bolle_collegate = conc.BolleCollegate;
+                    foreach (var bolla in bolle_collegate)
+                    {
+                        var id_bolla = bolla.Id;
+                        var riga = sinistraGrid.Where(y => y.IdRiga == id_bolla).FirstOrDefault();
+                        if (riga is not null)
+                        {
+                            riga.Selezionato = true;
+                            riga.Qta_Conc = bolla.Qta;
+                            riga.CodiceAbbinamento = id_abbinamento;
+                        }
+
+                        var score_bolla = bolla.FuzzyScore;
+                        var qta_bolla = bolla.Qta;
+                        var codice_orig_bolla = bolla.CodiceOriginale;
+                    }
+                }
+            });
+
+            await _dialogs.InfoAsync(s);
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ErroreAsync(ex.Message);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Salva le conciliazioni via API (POST /api/v1/conciliazione).</summary>
+    private async Task SalvaConciliazioni(string tipo)
+    {
+        var righeSinistra = Sinistra.ToList();
+        var righeDestra = Destra.ToList();
+        await _conciliazioneService.SalvaConciliazione(tipo, righeSinistra, righeDestra);
+    }
+}
